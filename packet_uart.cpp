@@ -99,7 +99,7 @@ void CPacketUART::begin(uint32_t baud)
     // Turn off interrupts
     cli();
 
-    // Compute the baud-rate pre-scaler assuming we're going to use baud doubling ode
+    // Compute the baud-rate pre-scaler assuming we're going to use baud doubling
     uint32_t baud_prescaler = (F_CPU / 8 / baud) - 1;
 
     // Turn on the U2X baud-rate doubling bit
@@ -121,6 +121,8 @@ void CPacketUART::begin(uint32_t baud)
 
     // Tell the backhaul that we're ready to receive a packet
     ready_to_receive();
+
+    // Allow incoming serial interrupts to occur
     sei();
 
     while (true)

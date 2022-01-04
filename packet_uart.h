@@ -14,6 +14,10 @@ public:
 
     // Sets up the buffer to receive a packet and sends a "ready to receive" message
     void    ready_to_receive();
+
+    // Returns true if a message is waiting
+    bool    is_message_waiting(unsigned char** p = nullptr);
+
 };
 
 
