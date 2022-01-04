@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <arduino.h>
 #include "packet_uart.h"
 
@@ -58,12 +59,14 @@ ISR(xUSART_RX_vect)
 //=========================================================================================================
 
 
-
 //=========================================================================================================
 // transmit() - Transmits a string of bytes to the client side
 //=========================================================================================================
-static void transmit(const unsigned char* s, int len)
+static void transmit(const unsigned char* s)
 {
+    // Fetch the number of bytes we need to transmit
+    unsigned char len = s[0];
+
     // So long as we have characters left to output...
     while (len--)
     {
@@ -82,8 +85,17 @@ static void transmit(const unsigned char* s, int len)
 //=========================================================================================================
 void CPacketUART::ready_to_receive()
 {
+    // This is the message that says "we're ready to receive another packet"
+    const unsigned char ack[] = {2, SP_READY};
+    
+    // We have no bytes in our RX buffer
     rx_buffer[0] = rx_count = 0;
+
+    // The next incoming byte gets stored in the first byte of the RX buffer
     rx_ptr = rx_buffer;
+
+    // Tell the backhaul that we're ready for another packet
+    transmit(ack);
 }
 //=========================================================================================================
 
@@ -138,7 +150,39 @@ void CPacketUART::printf(const char* format, ...)
     va_end(va);
 
     buffer[0] = len + 2;
-    buffer[1] = 1;
-    transmit(buffer, buffer[0]);
+    buffer[1] = SP_PRINT;
+    transmit(buffer);
+}
+//=========================================================================================================
+
+//=========================================================================================================
+// echo() - Performs a printf to the client side
+//=========================================================================================================
+void CPacketUART::echo(const unsigned char* s, int length)
+{
+    unsigned char buffer[256];
+    buffer[0] = length + 2;
+    buffer[1] = SP_PRINT;
+    memcpy(buffer+2, s, length);
+    transmit(buffer);
+}
+//=========================================================================================================
+
+
+
+
+//=========================================================================================================
+// is_message_waiting() - Returns true if a message is waiting in the receive buffer
+//=========================================================================================================
+bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
+{
+    // Is there an entire packet waiting in the input buffer?
+    bool is_packet_waiting = rx_count && (rx_buffer[0] == rx_count);
+
+    // If there is a packet waiting, hand the caller a pointer to the message buffer
+    if (is_packet_waiting && p) *p = rx_buffer;
+
+    // Tell the caller whether they have a message waiting to process
+    return is_packet_waiting;
 }
 //=========================================================================================================
