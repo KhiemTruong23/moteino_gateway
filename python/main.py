@@ -18,6 +18,13 @@ class MoteinoGateway(threading.Thread):
     pipe_out   = None  # The write-side of a socket used for notifications
     local_port = 32122
 
+    SP_PRINT       = b'\x01'     # From Gateway
+    SP_READY       = b'\x02'     # From Gateway
+    SP_ECHO        = b'\x03'     # To Gateway
+    SP_ALIVE       = b'\x04'     # From Gateway
+    SP_INIT_RADIO  = b'\x05'     # To Gateway
+    SP_ENCRYPT_KEY = b'\x06'     # To Gateway
+
     # ------------------------------------------------------------------------------
     # Constructor - Just calls the threading base-class constructor and creates
     #               objects we'll need to communicate between threads
@@ -86,9 +93,34 @@ class MoteinoGateway(threading.Thread):
     # echo() - Ask the gateway to echo a message back to us
     # ------------------------------------------------------------------------------
     def echo(self, packet_data):
-        SP_ECHO = b'\x03'
-        self.send_packet(SP_ECHO + packet_data)
+        self.send_packet(self.SP_ECHO + packet_data)
     # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
+    # init_radio() - Initialize the radio.
+    #
+    # Passed: frequency must be 433, 868, or 915
+    #         node_id = Between 0 and 1023
+    #         network_id = Between 0 and 255
+    # ------------------------------------------------------------------------------
+    def init_radio(self, frequency, node_id, network_id):
+        packet = self.SP_INIT_RADIO
+        packet = packet + frequency.to_bytes(2, 'little')
+        packet = packet + node_id.to_bytes(2, 'little')
+        packet = packet + network_id.to_bytes(1, 'little')
+        self.send_packet(packet)
+    # ------------------------------------------------------------------------------
+
+
+    # ------------------------------------------------------------------------------
+    # set_encryption_key() - Tells the radio what the network encryption key is
+    #
+    # The key must be exactly 16 bytes long
+    # ------------------------------------------------------------------------------
+    def set_encryption_key(self, key):
+        self.send_packet(self.SP_ENCRYPT_KEY + key)
+    # ------------------------------------------------------------------------------
+
 
 
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
@@ -105,7 +137,7 @@ class MoteinoGateway(threading.Thread):
     def send_packet(self, packet_data):
         packet_length = len(packet_data) + 1
         self.event.clear()
-        self.comport.write(packet_length.to_bytes(1, 'big') + packet_data)
+        self.comport.write(packet_length.to_bytes(1, 'little') + packet_data)
         self.event.wait(5)
     # ------------------------------------------------------------------------------
 
@@ -151,7 +183,7 @@ class MoteinoGateway(threading.Thread):
             # Read in a packet
             self.comport.timeout = None
             packet = self.comport.read(1)
-            count = int.from_bytes(packet, 'big')
+            count = int.from_bytes(packet, 'little')
             self.comport.timeout = .1
             packet = packet + self.comport.read(count - 1)
 
@@ -191,9 +223,19 @@ if __name__ == '__main__':
     gw = MoteinoGateway()
     gw.startup('COM10')
 
+    # Wait for the packet that tells us the gateway is alive
+    packet = gw.wait_for_message()
+
+    # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
+    gw.init_radio(915, 1, 100)
+
+    # Set the encryption key
+    gw.set_encryption_key(b'1234123412341234')
+
+    print("Initialized!")
     count = 0
     while True:
-        packet = gw.wait_for_message(.1)
+        packet = gw.wait_for_message(5)
         if packet == None:
             count = count + 1
             gw.echo(b'ECHO ' + count.to_bytes(4, 'big'))

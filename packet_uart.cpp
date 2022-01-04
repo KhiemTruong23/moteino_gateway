@@ -131,6 +131,9 @@ void CPacketUART::begin(uint32_t baud)
     // Tell the backhaul that we're ready to receive a packet
     ready_to_receive();
 
+    // Tell the backhaulthat we're alive
+    indicate_alive();
+
     // Allow incoming serial interrupts to occur
     sei();
 }
@@ -165,6 +168,17 @@ void CPacketUART::echo(const unsigned char* s, int length)
     buffer[1] = SP_PRINT;
     memcpy(buffer+2, s, length);
     transmit(buffer);
+}
+//=========================================================================================================
+
+
+//=========================================================================================================
+// indicate_alive() - Tell the client we're up and running
+//=========================================================================================================
+void CPacketUART::indicate_alive()
+{
+    unsigned char packet[] = {2, SP_ALIVE};
+    transmit(packet);
 }
 //=========================================================================================================
 

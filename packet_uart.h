@@ -6,9 +6,12 @@
 
 enum
 {
-    SP_PRINT = 0x01,  // To client
-    SP_READY = 0x02,  // To client
-    SP_ECHO  = 0x03   // To Gateway
+    SP_PRINT       = 0x01,  // To client
+    SP_READY       = 0x02,  // To client
+    SP_ECHO        = 0x03,  // From client
+    SP_ALIVE       = 0x04,  // To client
+    SP_INIT_RADIO  = 0x05,  // From client
+    SP_ENCRYPT_KEY = 0x06   // From client
 };
 
 class CPacketUART
@@ -26,6 +29,9 @@ public:
 
     // Print a debug string on the client
     void    printf(const char* format, ...);
+
+    // Tell the client we're alive
+    void    indicate_alive();
 
     // Print arbitray data to the client
     void    echo(const unsigned char* s, int length);
