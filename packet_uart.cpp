@@ -62,8 +62,11 @@ ISR(xUSART_RX_vect)
 //=========================================================================================================
 // transmit() - Transmits a string of bytes to the client side
 //=========================================================================================================
-static void transmit(const unsigned char* s)
+void CPacketUART::transmit_raw(const void* vp)
 {
+    // Transmute our pointer into a byte pointer
+    const unsigned char* s = (const unsigned char*)(vp);
+
     // Fetch the number of bytes we need to transmit
     unsigned char len = s[0];
 
@@ -95,7 +98,7 @@ void CPacketUART::ready_to_receive()
     rx_ptr = rx_buffer;
 
     // Tell the backhaul that we're ready for another packet
-    transmit(ack);
+    transmit_raw(ack);
 }
 //=========================================================================================================
 
@@ -154,7 +157,7 @@ void CPacketUART::printf(const char* format, ...)
 
     buffer[0] = len + 2;
     buffer[1] = SP_PRINT;
-    transmit(buffer);
+    transmit_raw(buffer);
 }
 //=========================================================================================================
 
@@ -167,7 +170,7 @@ void CPacketUART::echo(const unsigned char* s, int length)
     buffer[0] = length + 2;
     buffer[1] = SP_PRINT;
     memcpy(buffer+2, s, length);
-    transmit(buffer);
+    transmit_raw(buffer);
 }
 //=========================================================================================================
 
@@ -178,7 +181,7 @@ void CPacketUART::echo(const unsigned char* s, int length)
 void CPacketUART::indicate_alive()
 {
     unsigned char packet[] = {2, SP_ALIVE};
-    transmit(packet);
+    transmit_raw(packet);
 }
 //=========================================================================================================
 

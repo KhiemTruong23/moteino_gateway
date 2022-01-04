@@ -11,7 +11,8 @@ enum
     SP_ECHO        = 0x03,  // From client
     SP_ALIVE       = 0x04,  // To client
     SP_INIT_RADIO  = 0x05,  // From client
-    SP_ENCRYPT_KEY = 0x06   // From client
+    SP_ENCRYPT_KEY = 0x06,  // From client
+    SP_FROM_RADIO  = 0x07   // To client
 };
 
 class CPacketUART
@@ -35,6 +36,9 @@ public:
 
     // Print arbitray data to the client
     void    echo(const unsigned char* s, int length);
+
+    // Send a raw packet to the client
+    void    transmit_raw(const void* vp);
 };
 
 

@@ -3,7 +3,16 @@
 #include "forked_RFM69.h"
 
 
+bool is_radio_initialized = false;
+CPacketUART UART;
+ForkedRFM69 Radio;
+
+//=========================================================================================================
+// maps a structure onto a buffer named "raw"
+//=========================================================================================================
 #define map_struct(t,m) t& m=*(t*)raw
+//=========================================================================================================
+
 
 //=========================================================================================================
 // Formats of messages to and from the gateway
@@ -24,17 +33,23 @@ struct encrypt_key_t
     uint8_t   encryption_key[16];
 };
 
+struct rcvd_radio_t
+{
+    uint8_t  packet_len;
+    uint8_t  packet_type;
+    uint16_t src_node;
+    uint16_t dst_node;    
+    uint8_t  data_len;
+    uint8_t  data[0];
+};
 //=========================================================================================================
 
 
-
-CPacketUART UART;
-ForkedRFM69 Radio;
-
-void setup()
-{
-    UART.begin(250000);
-}
+//=========================================================================================================
+// setup() - Runs once at boot
+//=========================================================================================================
+void setup() {UART.begin(250000);}
+//=========================================================================================================
 
 
 
@@ -67,6 +82,9 @@ void handle_init_radio(const unsigned char* raw)
 
     // Initialize the radio
     Radio.initialize(freq_code, msg.node_id, msg.network_id);
+
+    // The radio is now initialized
+    is_radio_initialized = true;
 }
 //=========================================================================================================
 
@@ -122,6 +140,24 @@ void dispatch_serial_message(const unsigned char* packet)
 
 
 //=========================================================================================================
+// handle_incoming_radio_packet() - Sends an incoming packet to the client
+//=========================================================================================================
+void handle_incoming_radio_packet()
+{
+    rcvd_radio_t    packet;
+
+    packet.packet_len  = sizeof(packet) + Radio.DATALEN;
+    packet.packet_type = SP_FROM_RADIO;
+    packet.src_node    = Radio.SENDERID;
+    packet.dst_node    = Radio.TARGETID;
+    packet.data_len    = Radio.DATALEN;
+    memcpy(packet.data,  Radio.DATA, packet.data_len);
+    UART.transmit_raw((unsigned char*)&packet);
+}
+//=========================================================================================================
+
+
+//=========================================================================================================
 // loop() - The big loop, waits forever for incoming messages from the serial port or the radio
 //=========================================================================================================
 void loop()
@@ -131,6 +167,11 @@ void loop()
     if (UART.is_message_waiting(&msg))
     {
         dispatch_serial_message(msg);
+    }
+
+    if (is_radio_initialized && Radio.receiveDone())
+    {
+        handle_incoming_radio_packet();
     }
 }
 //========================================================================================================= 
