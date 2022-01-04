@@ -23,8 +23,8 @@
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
 // **********************************************************************************
-#ifndef RFM69_h
-#define RFM69_h
+#ifndef _FORKED_RFM69_H_
+#define _FORKED_RFM69_H_
 #include <Arduino.h>            // assumes Arduino IDE v1.0 or greater
 #include <SPI.h>
 
@@ -183,7 +183,7 @@
   #define  DEFAULT_LISTEN_IDLE_US 1000000
 #endif
 
-class RFM69 {
+class ForkedRFM69 {
   public:
     static uint8_t DATA[RF69_MAX_DATA_LEN+1]; // RX/TX payload buffer, including end of string NULL char
     static uint8_t DATALEN;
@@ -195,10 +195,10 @@ class RFM69 {
     static int16_t RSSI; // most accurate RSSI during reception (closest to the reception). RSSI of last packet.
     static uint8_t _mode; // should be protected?
 
-    RFM69(uint8_t slaveSelectPin, uint8_t interruptPin, bool isRFM69HW, uint8_t interruptNum __attribute__((unused))) //interruptNum is now deprecated
-                : RFM69(slaveSelectPin, interruptPin, isRFM69HW){};
+    ForkedRFM69(uint8_t slaveSelectPin, uint8_t interruptPin, bool isRFM69HW, uint8_t interruptNum __attribute__((unused))) //interruptNum is now deprecated
+                : ForkedRFM69(slaveSelectPin, interruptPin, isRFM69HW){};
 
-    RFM69(uint8_t slaveSelectPin=RF69_SPI_CS, uint8_t interruptPin=RF69_IRQ_PIN, bool isRFM69HW_HCW=false, SPIClass *spi=nullptr);
+    ForkedRFM69(uint8_t slaveSelectPin=RF69_SPI_CS, uint8_t interruptPin=RF69_IRQ_PIN, bool isRFM69HW_HCW=false, SPIClass *spi=nullptr);
 
     bool initialize(uint8_t freqBand, uint16_t ID, uint8_t networkID=1);
     void setAddress(uint16_t addr);

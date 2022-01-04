@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include "packet_uart.h"
-#include "RFM69.h"
+#include "forked_RFM69.h"
 
 
 #define map_struct(t,m) t& m=*(t*)raw
@@ -29,13 +29,12 @@ struct encrypt_key_t
 
 
 CPacketUART UART;
-RFM69       Radio;
+ForkedRFM69 Radio;
 
 void setup()
 {
     UART.begin(250000);
 }
-
 
 
 

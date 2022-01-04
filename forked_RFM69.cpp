@@ -23,24 +23,24 @@
 // Please maintain this license information along with authorship
 // and copyright notices in any redistribution of this code
 // **********************************************************************************
-#include "RFM69.h"
+#include "forked_RFM69.h"
 #include "RFM69registers.h"
 #include <SPI.h>
 #include "SimSerial.h"
 
 
-uint8_t RFM69::DATA[RF69_MAX_DATA_LEN+1];
-uint8_t RFM69::_mode;        // current transceiver state
-uint8_t RFM69::DATALEN;
-uint16_t RFM69::SENDERID;
-uint16_t RFM69::TARGETID;     // should match _address
-uint8_t RFM69::PAYLOADLEN;
-uint8_t RFM69::ACK_REQUESTED;
-uint8_t RFM69::ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
-int16_t RFM69::RSSI;          // most accurate RSSI during reception (closest to the reception)
-volatile bool RFM69::_haveData;
+uint8_t  ForkedRFM69::DATA[RF69_MAX_DATA_LEN+1];
+uint8_t  ForkedRFM69::_mode;        // current transceiver state
+uint8_t  ForkedRFM69::DATALEN;
+uint16_t ForkedRFM69::SENDERID;
+uint16_t ForkedRFM69::TARGETID;     // should match _address
+uint8_t  ForkedRFM69::PAYLOADLEN;
+uint8_t  ForkedRFM69::ACK_REQUESTED;
+uint8_t  ForkedRFM69::ACK_RECEIVED; // should be polled immediately after sending a packet with ACK request
+int16_t  ForkedRFM69::RSSI;          // most accurate RSSI during reception (closest to the reception)
+volatile bool ForkedRFM69::_haveData;
 
-RFM69::RFM69(uint8_t slaveSelectPin, uint8_t interruptPin, bool isRFM69HW_HCW, SPIClass *spi) {
+ForkedRFM69::ForkedRFM69(uint8_t slaveSelectPin, uint8_t interruptPin, bool isRFM69HW_HCW, SPIClass *spi) {
   _slaveSelectPin = slaveSelectPin;
   _interruptPin = interruptPin;
   _mode = RF69_MODE_STANDBY;
@@ -57,7 +57,7 @@ RFM69::RFM69(uint8_t slaveSelectPin, uint8_t interruptPin, bool isRFM69HW_HCW, S
 #endif
 }
 
-bool RFM69::initialize(uint8_t freqBand, uint16_t nodeID, uint8_t networkID)
+bool ForkedRFM69::initialize(uint8_t freqBand, uint16_t nodeID, uint8_t networkID)
 {
   _interruptNum = digitalPinToInterrupt(_interruptPin);
   if (_interruptNum == (uint8_t)NOT_AN_INTERRUPT) return false;
@@ -143,7 +143,7 @@ bool RFM69::initialize(uint8_t freqBand, uint16_t nodeID, uint8_t networkID)
   while (((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00) && millis()-start < timeout); // wait for ModeReady
   if (millis()-start >= timeout)
     return false;
-  attachInterrupt(_interruptNum, RFM69::isr0, RISING);
+  attachInterrupt(_interruptNum, ForkedRFM69::isr0, RISING);
 
   _address = nodeID;
 #if defined(RF69_LISTENMODE_ENABLE)
@@ -155,13 +155,13 @@ bool RFM69::initialize(uint8_t freqBand, uint16_t nodeID, uint8_t networkID)
 }
 
 // return the frequency (in Hz)
-uint32_t RFM69::getFrequency()
+uint32_t ForkedRFM69::getFrequency()
 {
   return RF69_FSTEP * (((uint32_t) readReg(REG_FRFMSB) << 16) + ((uint16_t) readReg(REG_FRFMID) << 8) + readReg(REG_FRFLSB));
 }
 
 // set the frequency (in Hz)
-void RFM69::setFrequency(uint32_t freqHz)
+void ForkedRFM69::setFrequency(uint32_t freqHz)
 {
   uint8_t oldMode = _mode;
   if (oldMode == RF69_MODE_TX) {
@@ -177,7 +177,7 @@ void RFM69::setFrequency(uint32_t freqHz)
   setMode(oldMode);
 }
 
-void RFM69::setMode(uint8_t newMode)
+void ForkedRFM69::setMode(uint8_t newMode)
 {
   if (newMode == _mode)
     return;
@@ -212,19 +212,19 @@ void RFM69::setMode(uint8_t newMode)
 }
 
 //put transceiver in sleep mode to save battery - to wake or resume receiving just call receiveDone()
-void RFM69::sleep() {
+void ForkedRFM69::sleep() {
   setMode(RF69_MODE_SLEEP);
 }
 
 //set this node's address
-void RFM69::setAddress(uint16_t addr)
+void ForkedRFM69::setAddress(uint16_t addr)
 {
   _address = addr;
   writeReg(REG_NODEADRS, _address); //unused in packet mode
 }
 
 //set this node's network id
-void RFM69::setNetwork(uint8_t networkID)
+void ForkedRFM69::setNetwork(uint8_t networkID)
 {
   writeReg(REG_SYNCVALUE2, networkID);
 }
@@ -241,7 +241,7 @@ void RFM69::setNetwork(uint8_t networkID)
 //     - 20-23 = REG_PALEVEL 28-31, ie [17 to 20dBm] & PA1+PA2+HiPower (HiPower is only enabled before going in TX mode, ie by setMode(RF69_MODE_TX)
 // The HW/HCW range overlaps are to smooth out transitions between the 3 PA domains, based on actual current/RSSI measurements
 // Any changes to this function also demand changes in dependent function setPowerDBm()
-void RFM69::setPowerLevel(uint8_t powerLevel) {
+void ForkedRFM69::setPowerLevel(uint8_t powerLevel) {
   uint8_t PA_SETTING;
   if (_isRFM69HW) {
     if (powerLevel>23) powerLevel = 23;
@@ -270,14 +270,14 @@ void RFM69::setPowerLevel(uint8_t powerLevel) {
 }
 
 // return stored _powerLevel
-uint8_t RFM69::getPowerLevel() {
+uint8_t ForkedRFM69::getPowerLevel() {
   return _powerLevel;
 }
 
 //Set TX Output power in dBm:
 // [-18..+13]dBm in RFM69 W/CW
 // [ -2..+20]dBm in RFM69 HW/HCW
-int8_t RFM69::setPowerDBm(int8_t dBm) {
+int8_t ForkedRFM69::setPowerDBm(int8_t dBm) {
   if (_isRFM69HW) {
     //fix any out of bounds
     if (dBm<-2) dBm=-2;
@@ -294,7 +294,7 @@ int8_t RFM69::setPowerDBm(int8_t dBm) {
   return dBm;
 }
 
-bool RFM69::canSend() 
+bool ForkedRFM69::canSend() 
 {
   if (_mode == RF69_MODE_RX && PAYLOADLEN == 0 && readRSSI() < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
   {
@@ -304,7 +304,7 @@ bool RFM69::canSend()
   return false;
 }
 
-void RFM69::send(uint16_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK)
+void ForkedRFM69::send(uint16_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK)
 {
   writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
   uint32_t now = millis();
@@ -318,7 +318,7 @@ void RFM69::send(uint16_t toAddress, const void* buffer, uint8_t bufferSize, boo
 // The reason for the semi-automaton is that the lib is interrupt driven and
 // requires user action to read the received data and decide what to do with it
 // replies usually take only 5..8ms at 50kbps@915MHz
-bool RFM69::sendWithRetry(uint16_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime) {
+bool ForkedRFM69::sendWithRetry(uint16_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime) {
   uint32_t sentTime;
   for (uint8_t i = 0; i <= retries; i++)
   {
@@ -333,19 +333,19 @@ bool RFM69::sendWithRetry(uint16_t toAddress, const void* buffer, uint8_t buffer
 }
 
 // should be polled immediately after sending a packet with ACK request
-bool RFM69::ACKReceived(uint16_t fromNodeID) {
+bool ForkedRFM69::ACKReceived(uint16_t fromNodeID) {
   if (receiveDone())
     return (SENDERID == fromNodeID || fromNodeID == RF69_BROADCAST_ADDR) && ACK_RECEIVED;
   return false;
 }
 
 // check whether an ACK was requested in the last received packet (non-broadcasted packet)
-bool RFM69::ACKRequested() {
+bool ForkedRFM69::ACKRequested() {
   return ACK_REQUESTED && (TARGETID == _address);
 }
 
 // should be called immediately after reception in case sender wants ACK
-void RFM69::sendACK(const void* buffer, uint8_t bufferSize) {
+void ForkedRFM69::sendACK(const void* buffer, uint8_t bufferSize) {
   ACK_REQUESTED = 0;   // TWS added to make sure we don't end up in a timing race and infinite loop sending Acks
   uint16_t sender = SENDERID;
   int16_t _RSSI = RSSI; // save payload received RSSI value
@@ -358,7 +358,7 @@ void RFM69::sendACK(const void* buffer, uint8_t bufferSize) {
 }
 
 // internal function
-void RFM69::sendFrame(uint16_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK, bool sendACK)
+void ForkedRFM69::sendFrame(uint16_t toAddress, const void* buffer, uint8_t bufferSize, bool requestACK, bool sendACK)
 {
   //NOTE: overridden in RFM69_ATC!
   setMode(RF69_MODE_STANDBY); // turn off receiver to prevent reception while filling fifo
@@ -397,7 +397,7 @@ void RFM69::sendFrame(uint16_t toAddress, const void* buffer, uint8_t bufferSize
 }
 
 // internal function - interrupt gets called when a packet is received
-void RFM69::interruptHandler() {
+void ForkedRFM69::interruptHandler() {
   if (_mode == RF69_MODE_RX && (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY))
   {
     setMode(RF69_MODE_STANDBY);
@@ -437,10 +437,10 @@ void RFM69::interruptHandler() {
 }
 
 // internal function
-ISR_PREFIX void RFM69::isr0() { _haveData = true; }
+ISR_PREFIX void ForkedRFM69::isr0() { _haveData = true; }
 
 // internal function
-void RFM69::receiveBegin() {
+void ForkedRFM69::receiveBegin() {
   DATALEN = 0;
   SENDERID = 0;
   TARGETID = 0;
@@ -458,7 +458,7 @@ void RFM69::receiveBegin() {
 }
 
 // checks if a packet was received and/or puts transceiver in receive (ie RX or listen) mode
-bool RFM69::receiveDone() {
+bool ForkedRFM69::receiveDone() {
   if (_haveData) {
   	_haveData = false;
   	interruptHandler();
@@ -479,7 +479,7 @@ bool RFM69::receiveDone() {
 // To enable encryption: radio.encrypt("ABCDEFGHIJKLMNOP");
 // To disable encryption: radio.encrypt(null) or radio.encrypt(0)
 // KEY HAS TO BE 16 bytes !!!
-void RFM69::encrypt(const char* key) {
+void ForkedRFM69::encrypt(const char* key) {
 #if defined(RF69_LISTENMODE_ENABLE)
   _haveEncryptKey = key;
 #endif
@@ -500,7 +500,7 @@ void RFM69::encrypt(const char* key) {
 }
 
 // get the received signal strength indicator (RSSI)
-int16_t RFM69::readRSSI(bool forceTrigger) {
+int16_t ForkedRFM69::readRSSI(bool forceTrigger) {
   int16_t rssi = 0;
   if (forceTrigger)
   {
@@ -513,7 +513,7 @@ int16_t RFM69::readRSSI(bool forceTrigger) {
   return rssi;
 }
 
-uint8_t RFM69::readReg(uint8_t addr)
+uint8_t ForkedRFM69::readReg(uint8_t addr)
 {
   select();
   _spi->transfer(addr & 0x7F);
@@ -522,7 +522,7 @@ uint8_t RFM69::readReg(uint8_t addr)
   return regval;
 }
 
-void RFM69::writeReg(uint8_t addr, uint8_t value)
+void ForkedRFM69::writeReg(uint8_t addr, uint8_t value)
 {
   select();
   _spi->transfer(addr | 0x80);
@@ -531,7 +531,7 @@ void RFM69::writeReg(uint8_t addr, uint8_t value)
 }
 
 // select the RFM69 transceiver (save SPI settings, set CS low)
-void RFM69::select() {
+void ForkedRFM69::select() {
 #if defined (SPCR) && defined (SPSR)
   // save current SPI settings
   _SPCR = SPCR;
@@ -556,7 +556,7 @@ void RFM69::select() {
 }
 
 // unselect the RFM69 transceiver (set CS high, restore SPI settings)
-void RFM69::unselect() {
+void ForkedRFM69::unselect() {
   digitalWrite(_slaveSelectPin, HIGH);
 #ifdef SPI_HAS_TRANSACTION
   _spi->endTransaction();
@@ -570,13 +570,13 @@ void RFM69::unselect() {
 
 // true = disable ID filtering to capture all packets on network, regardless of TARGETID
 // false (default) = enable node/broadcast ID filtering to capture only frames sent to this/broadcast address
-void RFM69::spyMode(bool onOff) {
+void ForkedRFM69::spyMode(bool onOff) {
   _spyMode = onOff;
   //writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | (onOff ? RF_PACKET1_ADRSFILTERING_OFF : RF_PACKET1_ADRSFILTERING_NODEBROADCAST));
 }
 
 // for RFM69 HW/HCW only: you must call setHighPower(true) after initialize() or else transmission won't work
-void RFM69::setHighPower(bool _isRFM69HW_HCW) {
+void ForkedRFM69::setHighPower(bool _isRFM69HW_HCW) {
   _isRFM69HW = _isRFM69HW_HCW;
   writeReg(REG_OCP, _isRFM69HW ? RF_OCP_OFF : RF_OCP_ON); //disable OverCurrentProtection for HW/HCW
   setPowerLevel(_powerLevel);
@@ -585,21 +585,21 @@ void RFM69::setHighPower(bool _isRFM69HW_HCW) {
 // internal function - for HW/HCW only:
 // enables HiPower for 18-20dBm output
 // should only be used with PA1+PA2
-void RFM69::setHighPowerRegs(bool enable) {
+void ForkedRFM69::setHighPowerRegs(bool enable) {
   if (!_isRFM69HW || _powerLevel<20) enable=false;
   writeReg(REG_TESTPA1, enable ? 0x5D : 0x55);
   writeReg(REG_TESTPA2, enable ? 0x7C : 0x70);
 }
 
 // set the slave select (CS) pin 
-void RFM69::setCS(uint8_t newSPISlaveSelect) {
+void ForkedRFM69::setCS(uint8_t newSPISlaveSelect) {
   _slaveSelectPin = newSPISlaveSelect;
   digitalWrite(_slaveSelectPin, HIGH);
   pinMode(_slaveSelectPin, OUTPUT);
 }
 
 // set the IRQ pin
-bool RFM69::setIrq(uint8_t newIRQPin) {
+bool ForkedRFM69::setIrq(uint8_t newIRQPin) {
   uint8_t _newInterruptNum = digitalPinToInterrupt(newIRQPin);
   if (_newInterruptNum == (uint8_t)NOT_AN_INTERRUPT) return false;
 #ifdef RF69_ATTACHINTERRUPT_TAKES_PIN_NUMBER
@@ -610,7 +610,7 @@ bool RFM69::setIrq(uint8_t newIRQPin) {
   detachInterrupt( _interruptNum );
 
   _interruptNum = _newInterruptNum;
-  attachInterrupt(_interruptNum, RFM69::isr0, RISING);
+  attachInterrupt(_interruptNum, ForkedRFM69::isr0, RISING);
 
   return true;
 }
@@ -630,7 +630,7 @@ void SerialPrint_P(PGM_P str, void (*f)(uint8_t) = SerialWrite ) {
 }
 #endif
 
-void RFM69::readAllRegs()
+void ForkedRFM69::readAllRegs()
 {
   uint8_t regVal;
 
@@ -897,7 +897,7 @@ void RFM69::readAllRegs()
   unselect();
 }
 
-void RFM69::readAllRegsCompact() {
+void ForkedRFM69::readAllRegsCompact() {
   // Print the header row and first register entry
   SerialX.println();SerialX.print("     ");
   for ( uint8_t reg = 0x00; reg<0x10; reg++ ) {
@@ -923,7 +923,7 @@ void RFM69::readAllRegsCompact() {
   }
 }
 
-uint8_t RFM69::readTemperature(uint8_t calFactor) // returns centigrade
+uint8_t ForkedRFM69::readTemperature(uint8_t calFactor) // returns centigrade
 {
   setMode(RF69_MODE_STANDBY);
   writeReg(REG_TEMP1, RF_TEMP1_MEAS_START);
@@ -931,7 +931,7 @@ uint8_t RFM69::readTemperature(uint8_t calFactor) // returns centigrade
   return ~readReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; // 'complement' corrects the slope, rising temp = rising val
 } // COURSE_TEMP_COEF puts reading in the ballpark, user can add additional correction
 
-void RFM69::rcCalibration()
+void ForkedRFM69::rcCalibration()
 {
   writeReg(REG_OSC1, RF_OSC1_RCCAL_START);
   while ((readReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
@@ -940,7 +940,7 @@ void RFM69::rcCalibration()
 //===================================================================================================================
 // radio300KBPS() - switch radio to max bitrate
 //===================================================================================================================
-void RFM69::set300KBPS() {
+void ForkedRFM69::set300KBPS() {
   writeReg(0x03, 0x00);  //REG_BITRATEMSB: 300kbps (0x006B, see DS p20)
   writeReg(0x04, 0x6B);  //REG_BITRATELSB: 300kbps (0x006B, see DS p20)
   writeReg(0x19, 0x40);  //REG_RXBW: 500kHz
@@ -966,7 +966,7 @@ void RFM69::set300KBPS() {
 //  110 - G6 = highest gain 48 dB
 //  111 - reserved
 //=============================================================================
-uint8_t RFM69::setLNA(uint8_t newReg) {
+uint8_t ForkedRFM69::setLNA(uint8_t newReg) {
   byte oldReg;
   oldReg = readReg(REG_LNA);
   writeReg(REG_LNA, ((newReg & 7) | (oldReg & ~7))); // just control the LNA Gain bits for now
@@ -974,7 +974,7 @@ uint8_t RFM69::setLNA(uint8_t newReg) {
 }
 
 // ListenMode sleep/timer - see ListenModeSleep example for proper usage!
-void RFM69::listenModeSleep(uint16_t millisInterval) 
+void ForkedRFM69::listenModeSleep(uint16_t millisInterval) 
 {
   setMode( RF69_MODE_STANDBY );
   while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
@@ -1021,7 +1021,7 @@ void RFM69::listenModeSleep(uint16_t millisInterval)
 //=============================================================================
 // endListenModeSleep() - called by listenModeSleep()
 //=============================================================================
-void RFM69::endListenModeSleep()
+void ForkedRFM69::endListenModeSleep()
 {
   detachInterrupt( _interruptNum );
   writeReg( REG_OPMODE, RF_OPMODE_SEQUENCER_ON | RF_OPMODE_LISTENABORT | RF_OPMODE_STANDBY );
@@ -1034,22 +1034,22 @@ void RFM69::endListenModeSleep()
 //=============================================================================
 // delayIRQ() - called by listenModeSleep()
 //=============================================================================
-void RFM69::delayIrq() { return; }
+void ForkedRFM69::delayIrq() { return; }
 
 //=============================================================================
 //                     ListenMode specific functions  
 //=============================================================================
 #if defined(RF69_LISTENMODE_ENABLE)
-RFM69* RFM69::selfPointer=0;
-volatile uint16_t RFM69::RF69_LISTEN_BURST_REMAINING_MS = 0;
+RFM69* ForkedRFM69::selfPointer=0;
+volatile uint16_t ForkedRFM69::RF69_LISTEN_BURST_REMAINING_MS = 0;
 
 //=============================================================================
 // reinitRadio() - use base class initialization with saved values
 //=============================================================================
-bool RFM69::reinitRadio()
+bool ForkedRFM69::reinitRadio()
 {
   if (!initialize(_freqBand, _address, _networkID)) return false;
-  if (_haveEncryptKey) RFM69::encrypt(_encryptKey); // Restore the encryption key if necessary
+  if (_haveEncryptKey) ForkedRFM69::encrypt(_encryptKey); // Restore the encryption key if necessary
   if (_isHighSpeed) writeReg(REG_LNA, (readReg(REG_LNA) & ~0x3) | RF_LNA_GAINSELECT_AUTO);
   return true;
 }
@@ -1099,7 +1099,7 @@ static bool chooseResolutionAndCoef(uint8_t *resolutions, uint32_t duration, uin
   return false;
 }
 
-bool RFM69::listenModeSetDurations(uint32_t& rxDuration, uint32_t& idleDuration)
+bool ForkedRFM69::listenModeSetDurations(uint32_t& rxDuration, uint32_t& idleDuration)
 {
   uint8_t rxResolutions[] = { RF_LISTEN1_RESOL_RX_64, RF_LISTEN1_RESOL_RX_4100, RF_LISTEN1_RESOL_RX_262000, 0 };
   uint8_t idleResolutions[] = { RF_LISTEN1_RESOL_IDLE_64, RF_LISTEN1_RESOL_IDLE_4100, RF_LISTEN1_RESOL_IDLE_262000, 0 };
@@ -1117,13 +1117,13 @@ bool RFM69::listenModeSetDurations(uint32_t& rxDuration, uint32_t& idleDuration)
   return true;
 }
 
-void RFM69::listenModeGetDurations(uint32_t &rxDuration, uint32_t &idleDuration)
+void ForkedRFM69::listenModeGetDurations(uint32_t &rxDuration, uint32_t &idleDuration)
 {
   rxDuration = getUsForResolution(_rxListenResolution) * _rxListenCoef;
   idleDuration = getUsForResolution(_idleListenResolution) * _idleListenCoef;
 }
 
-void RFM69::listenModeReset(void)
+void ForkedRFM69::listenModeReset(void)
 {
   DATALEN = 0;
   SENDERID = 0;
@@ -1137,12 +1137,12 @@ void RFM69::listenModeReset(void)
 //=============================================================================
 // irq handler, simply calls listenModeInterruptHandler method so internal methods can be accessed easily
 //=============================================================================
-ISR_PREFIX void RFM69::listenModeIrq() { selfPointer->listenModeInterruptHandler(); }
+ISR_PREFIX void ForkedRFM69::listenModeIrq() { selfPointer->listenModeInterruptHandler(); }
 
 //=============================================================================
 // listenModeInterruptHandler() - only called by listen irq handler
 //=============================================================================
-void RFM69::listenModeInterruptHandler(void)
+void ForkedRFM69::listenModeInterruptHandler(void)
 {
   if (DATALEN != 0) return;
 
@@ -1190,7 +1190,7 @@ out:
 //=============================================================================
 // listenModeStart() - switch radio to Listen Mode in prep for sleep until burst
 //=============================================================================
-void RFM69::listenModeStart(void)
+void ForkedRFM69::listenModeStart(void)
 {
   //pRadio = this;
   while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT == 0x00); // wait for ModeReady
@@ -1221,7 +1221,7 @@ void RFM69::listenModeStart(void)
 //=============================================================================
 // listenModeEnd() - exit listen mode and reinit the radio
 //=============================================================================
-void RFM69::listenModeEnd(void)
+void ForkedRFM69::listenModeEnd(void)
 {
   detachInterrupt(_interruptNum);
   writeReg(REG_OPMODE, RF_OPMODE_SEQUENCER_ON | RF_OPMODE_LISTENABORT | RF_OPMODE_STANDBY);
@@ -1233,7 +1233,7 @@ void RFM69::listenModeEnd(void)
   reinitRadio();
 }
 
-void RFM69::listenModeApplyHighSpeedSettings()
+void ForkedRFM69::listenModeApplyHighSpeedSettings()
 {
   if (!_isHighSpeed) return;
   writeReg(REG_BITRATEMSB, RF_BITRATEMSB_200000);
@@ -1249,7 +1249,7 @@ void RFM69::listenModeApplyHighSpeedSettings()
 //=============================================================================
 // sendBurst() - send a burst of packets to a sleeping listening node (or all)
 //=============================================================================
-void RFM69::listenModeSendBurst( uint8_t targetNode, const void* buffer, uint8_t size )
+void ForkedRFM69::listenModeSendBurst( uint8_t targetNode, const void* buffer, uint8_t size )
 {
   detachInterrupt(_interruptNum);
   setMode(RF69_MODE_STANDBY);
