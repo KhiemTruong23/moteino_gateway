@@ -14,16 +14,12 @@ if __name__ == '__main__':
     gw.set_encryption_key(b'1234123412341234')
 
     print("Initialized!")
-    count = 0
+
+    # Sit in a loop, displaying incoming radio packets
     while True:
         packet = gw.wait_for_message()
-        if packet[1] == gw.SP_FROM_RADIO:
-            message = moteinogw.RadioPacket(packet)
-            if isinstance(message, moteinogw.RadioPacket):
-                print(type(message))
-                print("From :", message.src_node)
-                print("To   :", message.dst_node)
-                print("Data :", message.data)
-                print()
-
-    print("Exiting program")
+        if isinstance(packet, moteinogw.RadioPacket):
+            print("From :", packet.src_node)
+            print("To   :", packet.dst_node)
+            print("Data :", packet.data)
+            print()
