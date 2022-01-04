@@ -1,9 +1,16 @@
 import serial
 import threading
-import time
 import socket
 import collections
 import select
+
+class RadioPacket:
+
+    def __init__(self, raw_packet):
+        self.src_node = int.from_bytes(raw_packet[2:4], 'little')
+        self.dst_node = int.from_bytes(raw_packet[4:6], 'little')
+        datalen = int.from_bytes(raw_packet[6:7], 'little')
+        self.data = raw_packet[7:7+datalen]
 
 # ==========================================================================================================
 # MoteinoGateway - Manages communications with the Moteino gateway driving an RFM69 radio
@@ -18,12 +25,13 @@ class MoteinoGateway(threading.Thread):
     pipe_out   = None  # The write-side of a socket used for notifications
     local_port = 32122
 
-    SP_PRINT       = b'\x01'     # From Gateway
-    SP_READY       = b'\x02'     # From Gateway
+    SP_PRINT       =   0x01      # From Gateway
+    SP_READY       =   0x02      # From Gateway
     SP_ECHO        = b'\x03'     # To Gateway
-    SP_ALIVE       = b'\x04'     # From Gateway
+    SP_ALIVE       =   0x04      # From Gateway
     SP_INIT_RADIO  = b'\x05'     # To Gateway
     SP_ENCRYPT_KEY = b'\x06'     # To Gateway
+    SP_FROM_RADIO  =   0x07      # From Gateway
 
     # ------------------------------------------------------------------------------
     # Constructor - Just calls the threading base-class constructor and creates
@@ -168,9 +176,6 @@ class MoteinoGateway(threading.Thread):
     # ---------------------------------------------------------------------------
     def run(self):
 
-        SP_PRINT = 1
-        SP_READY = 2
-
         # Wait for the receive line to go quiet
         self.comport.timeout = .1
         while not self.comport.read() == b'':
@@ -193,12 +198,12 @@ class MoteinoGateway(threading.Thread):
                 continue
 
             # If this is a "print this" packet, make it so
-            if packet[1] == SP_PRINT:
+            if packet[1] == self.SP_PRINT:
                 print("Gateway says:", packet[2:])
                 continue
 
             # If this is a "Ready to receive" notification, tell the other thread
-            if packet[1] == SP_READY:
+            if packet[1] == self.SP_READY:
                 self.event.set()
                 continue
 
@@ -235,11 +240,12 @@ if __name__ == '__main__':
     print("Initialized!")
     count = 0
     while True:
-        packet = gw.wait_for_message(5)
-        if packet == None:
-            count = count + 1
-            gw.echo(b'ECHO ' + count.to_bytes(4, 'big'))
-        else:
-            print("Handling packet: ", packet)
+        packet = gw.wait_for_message()
+        if packet[1] == gw.SP_FROM_RADIO:
+            message = RadioPacket(packet)
+            print("From :", message.src_node)
+            print("To   :", message.dst_node)
+            print("Data :", message.data)
+            print()
 
     print("Exiting program")

@@ -1,6 +1,6 @@
 @echo off
 git add *.cpp *.h *.ino push.bat
-git add python\main.py
+git add python\*.py
 git commit -m "See history.h"
 git push origin main
 
