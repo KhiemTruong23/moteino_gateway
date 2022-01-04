@@ -33,12 +33,21 @@ struct encrypt_key_t
     uint8_t   encryption_key[16];
 };
 
-struct rcvd_radio_t
+struct from_radio_t
 {
     uint8_t  packet_len;
     uint8_t  packet_type;
     uint16_t src_node;
     uint16_t dst_node;    
+    uint8_t  data_len;
+    uint8_t  data[0];
+};
+
+struct to_radio_t
+{
+    uint8_t  packet_len;
+    uint8_t  packet_type;
+    uint16_t dst_node;
     uint8_t  data_len;
     uint8_t  data[0];
 };
@@ -105,6 +114,28 @@ void handle_encrypt_key(const unsigned char* raw)
 
 
 //=========================================================================================================
+// handle_to_radio() - Sends a packet to the radio
+//=========================================================================================================
+void handle_to_radio(const unsigned char* raw)
+{
+    // Map our structure on top of the raw packet
+    map_struct(to_radio_t, msg);
+
+    // Make sure the radio is initialized before trying to send a message
+    if (!is_radio_initialized)
+    {
+        UART.printf("Radio not initialized!");
+        return;
+    }
+
+    // Ask the radio to send this message
+    Radio.send(msg.dst_node, msg.data, msg.data_len);
+}
+//=========================================================================================================
+
+
+
+//=========================================================================================================
 // dispatch_serial_message() - Processes messages from the serial port
 //=========================================================================================================
 void dispatch_serial_message(const unsigned char* packet)
@@ -127,6 +158,10 @@ void dispatch_serial_message(const unsigned char* packet)
             handle_encrypt_key(packet);
             break;
 
+        case SP_TO_RADIO:
+            handle_to_radio(packet);
+            break;
+
         default:
             UART.printf("Recvd unknown packet type %i", packet_type);
             break;
@@ -144,7 +179,7 @@ void dispatch_serial_message(const unsigned char* packet)
 //=========================================================================================================
 void handle_incoming_radio_packet()
 {
-    rcvd_radio_t    packet;
+    from_radio_t    packet;
 
     packet.packet_len  = sizeof(packet) + Radio.DATALEN;
     packet.packet_type = SP_FROM_RADIO;

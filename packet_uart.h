@@ -12,7 +12,8 @@ enum
     SP_ALIVE       = 0x04,  // To client
     SP_INIT_RADIO  = 0x05,  // From client
     SP_ENCRYPT_KEY = 0x06,  // From client
-    SP_FROM_RADIO  = 0x07   // To client
+    SP_FROM_RADIO  = 0x07,  // To client
+    SP_TO_RADIO    = 0x08   // From client
 };
 
 class CPacketUART
