@@ -8,28 +8,55 @@ import select
 # ==========================================================================================================
 # MoteinoGateway - Manages communications with the Moteino gateway driving an RFM69 radio
 # ==========================================================================================================
-class MoteinoGateway:
+class MoteinoGateway(threading.Thread):
 
-    comport  = None
-    listener = None
-    sock     = None
+    comport    = None  # A PySerial object
+    queue      = None  # A queue of incoming packets
+    mutex      = None  # Mutex that protects the queue
+    event      = None  # An event that signals receipt of an ack from the gateway
+    pipe_in    = None  # The read-side of a socket used for notifications
+    pipe_out   = None  # The write-side of a socket used for notifications
+    local_port = 32122
 
     # ------------------------------------------------------------------------------
-    # start() - Begins the process of monitoring the gateway
+    # Constructor - Just calls the threading base-class constructor and creates
+    #               objects we'll need to communicate between threads
     # ------------------------------------------------------------------------------
-    def start(self, port):
-        local_port = 32122
+    def __init__(self):
+
+        # Call the base class constructor
+        threading.Thread.__init__(self)
+
+        # Create an empty queue for our incoming messages
+        self.queue = collections.deque()
+
+        # Create a mutex to protect the queue
+        self.mutex = threading.Lock()
+
+        # Create an event to notify other thread of message receipts
+        self.event = threading.Event()
+
+    # ------------------------------------------------------------------------------
+
+
+    # ------------------------------------------------------------------------------
+    # startup() - Begins the process of monitoring the gateway
+    # ------------------------------------------------------------------------------
+    def startup(self, port):
 
         # Create a socket to start listening on
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(('localhost', local_port))
+        sock.bind(('localhost', self.local_port))
         sock.listen(1)
+
+        # Open the connection to the serial port
         self.comport = serial.Serial(port, 250000)
-        self.listener = Listener(self.comport, local_port)
-        self.listener.begin()
+
+        # Launch the thread that does a blocking read on the serial port
+        self.launch_serial_reader_thread()
 
         # Accept a connection from the other thread
-        self.sock, _ = sock.accept()
+        self.pipe_in, _ = sock.accept()
     # ------------------------------------------------------------------------------
 
 
@@ -41,14 +68,17 @@ class MoteinoGateway:
 
         # If the user wants a timeout, wait for data to arrive
         if timeout_seconds:
-            ready = select.select([self.sock], [], [], timeout_seconds)
+            ready = select.select([self.pipe_in], [], [], timeout_seconds)
             if not ready[0]: return None
 
         # Blocking read, waiting for a notification that a message is available
-        self.sock.recv(1)
+        self.pipe_in.recv(1)
 
         # And return the packet at the top of the FIFO
-        return self.listener.read_fifo()
+        self.mutex.acquire()
+        packet = self.queue.popleft()
+        self.mutex.release()
+        return packet
     # ------------------------------------------------------------------------------
 
 
@@ -74,75 +104,31 @@ class MoteinoGateway:
     # ------------------------------------------------------------------------------
     def send_packet(self, packet_data):
         packet_length = len(packet_data) + 1
-        self.listener.event.clear()
+        self.event.clear()
         self.comport.write(packet_length.to_bytes(1, 'big') + packet_data)
-        self.listener.event.wait(5)
+        self.event.wait(5)
     # ------------------------------------------------------------------------------
-
-
-
-
-
-# ==========================================================================================================
-# listener - A helper thread that listens for reply packets
-# ==========================================================================================================
-class Listener(threading.Thread):
-
-    comport    = None
-    local_port = None
-    sock       = None
-    mutex      = None
-    event      = None
-
-    # ------------------------------------------------------------------------------
-    # Constructor - Records the comport object we want to listen on
-    # ------------------------------------------------------------------------------
-    def __init__(self, comport, local_port):
-
-        # Call the threading base class constructor
-        threading.Thread.__init__(self)
-
-        # Save the comport we want to listen to
-        self.comport = comport
-
-        # Save the local port number that we will use to send notifications
-        self.local_port = local_port
-
-        # Create an empty queue for our incoming messages
-        self.queue = collections.deque()
-
-        # Create a mutex to protect the queue
-        self.mutex = threading.Lock()
-
-        # Create an event to notify other thread of message receipts
-        self.event = threading.Event()
-    # ----------------------------------------------------------------------------
 
 
 
     # ---------------------------------------------------------------------------
-    # begin() - Starts a thread and begins listening for incoming messages
+    # launch_serial_reader_thread() - Starts the thread that does a blocking
+    #                                 read on the serial port
     # ---------------------------------------------------------------------------
-    def begin(self):
+    def launch_serial_reader_thread(self):
 
         # Ensure that this thread exits when the main program does
         self.daemon = True
 
-        # Create an event that other threads can wait on
-        self.event = threading.Event()
-
         # Create the socket that we will use to send notifications
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.pipe_out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         # Make the socket connection to the other thread
-        self.sock.connect(('localhost', self.local_port))
+        self.pipe_out.connect(('localhost', self.local_port))
 
         # Start the thread
         self.start()
     # ---------------------------------------------------------------------------
-
-
-
 
 
     # ---------------------------------------------------------------------------
@@ -190,21 +176,9 @@ class Listener(threading.Thread):
             self.mutex.release()
 
             # Notify the other thread that there is a packet in the queue
-            self.sock.send(b'\x01')
+            self.pipe_out.send(b'\x01')
 
     # ---------------------------------------------------------------------------
-
-    # ---------------------------------------------------------------------------
-    # read_fifo() - Returns the packet at the front of the queue
-    # ---------------------------------------------------------------------------
-    def read_fifo(self):
-        self.mutex.acquire()
-        packet = self.queue.popleft()
-        self.mutex.release()
-        return packet
-
-    # ---------------------------------------------------------------------------
-
 
 
 # ==========================================================================================================
@@ -215,7 +189,7 @@ class Listener(threading.Thread):
 
 if __name__ == '__main__':
     gw = MoteinoGateway()
-    gw.start('COM10')
+    gw.startup('COM10')
 
     count = 0
     while True:
