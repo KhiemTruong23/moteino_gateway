@@ -6,7 +6,7 @@ import collections
 import select
 
 # ==========================================================================================================
-# wifi_i2c - Manages communications with ESP32 wifi-i2c server
+# MoteinoGateway - Manages communications with the Moteino gateway driving an RFM69 radio
 # ==========================================================================================================
 class MoteinoGateway:
 
@@ -24,7 +24,7 @@ class MoteinoGateway:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('localhost', local_port))
         sock.listen(1)
-        self.comport = serial.Serial(port, 115200)
+        self.comport = serial.Serial(port, 250000)
         self.listener = Listener(self.comport, local_port)
         self.listener.begin()
 

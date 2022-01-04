@@ -6,7 +6,7 @@ CPacketUART UART;
 
 void setup()
 {
-    UART.begin(115200);
+    UART.begin(250000);
     UART.printf("Firmware booted");
 }
 
