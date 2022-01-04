@@ -126,7 +126,7 @@ class MoteinoGateway(threading.Thread):
         # Make the socket connection to the other thread
         self.pipe_out.connect(('localhost', self.local_port))
 
-        # Start the thread
+        # This launches the "self.run()" routine in it's own thread
         self.start()
     # ---------------------------------------------------------------------------
 
@@ -193,7 +193,7 @@ if __name__ == '__main__':
 
     count = 0
     while True:
-        packet = gw.wait_for_message(5)
+        packet = gw.wait_for_message(.1)
         if packet == None:
             count = count + 1
             gw.echo(b'ECHO ' + count.to_bytes(4, 'big'))
