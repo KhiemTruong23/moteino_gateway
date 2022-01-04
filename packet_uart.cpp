@@ -2,6 +2,8 @@
 // packet_uart() - A fast UART that sends and receives packets
 //=========================================================================================================
 #include <stdint.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <arduino.h>
 #include "packet_uart.h"
 
@@ -57,27 +59,22 @@ ISR(xUSART_RX_vect)
 
 
 
-
-
-
-static void transmit(const char* s, int len)
+//=========================================================================================================
+// transmit() - Transmits a string of bytes to the client side
+//=========================================================================================================
+static void transmit(const unsigned char* s, int len)
 {
-  while (len--)
-  {
-    while ((xUCSRA & (1 << UDRE0)) == 0);
-    xUDR = *s++;
-  }
+    // So long as we have characters left to output...
+    while (len--)
+    {
+        // Wait for the UART transmitter to become available
+        while ((xUCSRA & (1 << UDRE0)) == 0);
+        
+        // And write the next byte to the UART transmitter
+        xUDR = *s++;
+    }
 }
-
-
-#include <stdio.h>
-#include <string.h>
-static void transmit(uint32_t x)
-{
-    char buffer[20];
-    sprintf(buffer, "%li\n", x);
-    transmit(buffer, strlen(buffer));
-}
+//=========================================================================================================
 
 
 //=========================================================================================================
@@ -124,15 +121,24 @@ void CPacketUART::begin(uint32_t baud)
 
     // Allow incoming serial interrupts to occur
     sei();
+}
+//=========================================================================================================
 
-    while (true)
-    {
-        if (rx_count && rx_buffer[rx_count - 1] == '\n')
-        {
-            rx_buffer[rx_count] = 0;
-            transmit(rx_buffer, strlen(rx_buffer));
-            ready_to_receive();
-        }
-    }
+
+//=========================================================================================================
+// printf() - Performs a printf to the client side
+//=========================================================================================================
+void CPacketUART::printf(const char* format, ...)
+{
+    unsigned char buffer[256];
+    va_list va;
+
+    va_start(va, format);
+    int len = vsprintf(buffer+2, format, va);
+    va_end(va);
+
+    buffer[0] = len + 2;
+    buffer[1] = 1;
+    transmit(buffer, buffer[0]);
 }
 //=========================================================================================================

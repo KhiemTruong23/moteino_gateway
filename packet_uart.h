@@ -18,6 +18,9 @@ public:
     // Returns true if a message is waiting
     bool    is_message_waiting(unsigned char** p = nullptr);
 
+    // Print a debug string on the client
+    void    printf(const char* format, ...);
+
 };
 
 
