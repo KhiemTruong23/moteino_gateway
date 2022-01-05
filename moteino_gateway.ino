@@ -73,7 +73,7 @@ struct to_radio_t
 //=========================================================================================================
 void setup()
 {
-    UART.begin(250000);
+    UART.begin(115200);
 }
 //=========================================================================================================
 
@@ -162,7 +162,7 @@ void handle_to_radio(const unsigned char* raw)
     if (strncmp(msg.data, "I see you ", 10) != 0) UART.printf("Bad outgoing data!");
 
     // Ask the radio to send this message
-    Radio.send(msg.dst_node, &msg.data, msg.data_len);
+    Radio.send(msg.dst_node, msg.data, msg.data_len);
 }
 //=========================================================================================================
 

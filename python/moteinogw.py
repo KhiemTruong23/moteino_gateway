@@ -108,7 +108,7 @@ class MoteinoGateway(threading.Thread):
         sock.listen(1)
 
         # Open the connection to the serial port
-        self.comport = serial.Serial(port, 250000)
+        self.comport = serial.Serial(port, 115200)
 
         # Launch the thread that does a blocking read on the serial port
         self.launch_serial_reader_thread()
@@ -202,9 +202,13 @@ class MoteinoGateway(threading.Thread):
         packet_header = packet_length.to_bytes(1, 'little')
         packet_header = packet_header + crc.to_bytes(1, 'little')
 
+        # Keep track of the most recent packet that we've sent out
+        self.last_packet_sent = packet_header + packet_data
+
         self.event.clear()
-        self.comport.write(packet_header + packet_data)
-        self.event.wait(5)
+        self.comport.write(self.last_packet_sent)
+        if not self.event.wait(5):
+            print("Timed out waiting for serial response!")
     # ------------------------------------------------------------------------------
 
 

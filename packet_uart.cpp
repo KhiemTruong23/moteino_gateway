@@ -45,6 +45,7 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 static volatile unsigned char rx_buffer[256];
 static volatile unsigned char* rx_ptr;
 static volatile unsigned char rx_count;
+static volatile unsigned long rx_start;
 //=========================================================================================================
 
 
@@ -55,7 +56,7 @@ static volatile unsigned char rx_count;
 ISR(xUSART_RX_vect)
 {
     *rx_ptr++ = xUDR;
-    ++rx_count;
+    if (++rx_count == 1) rx_start = millis();
 }
 //=========================================================================================================
 
@@ -181,26 +182,46 @@ void CPacketUART::indicate_alive()
 //=========================================================================================================
 bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
 {
+    // If there are no bytes in the receive buffer, we're done
+    if (rx_count == 0) return false;
+    
     // Is there an entire packet waiting in the input buffer?
-    bool is_packet_waiting = rx_count && (rx_buffer[0] == rx_count);
+    bool is_packet_waiting = (rx_buffer[0] == rx_count);
 
-    // If there is a packet waiting, hand the caller a pointer to the message buffer
-    if (is_packet_waiting && p) *p = rx_buffer;
-
-    // If there's an incoming packet waiting, check to see if the CRC is correct.
-    // If the CRC isn't correct, reject the packet
-    if (is_packet_waiting)
+    // If we don't have a complete packet waiting...
+    if (!is_packet_waiting)
     {
-        uint8_t old_crc = rx_buffer[1];
-        uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
-        if (old_crc != new_crc)
+        // How long have we been waiting for the packet to complete?
+        unsigned long elapsed = millis() - rx_start;
+
+        // If we've timed out waiting for the packet to complete, tell the client
+        if (elapsed > 20)
         {
+            printf("DROPPED BYTE!");
             ready_to_receive(false);
-            return false;
         }
+
+        // And tell the caller that there's no packet waiting
+        return false;
     }
 
-    // Tell the caller whether they have a message waiting to process
-    return is_packet_waiting;
+    //--------------------------------------------------------------
+    //  If we get here, there is a complete packet waiting for us
+    //--------------------------------------------------------------
+
+    // Check the CRC
+    uint8_t old_crc = rx_buffer[1];
+    uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
+    if (old_crc != new_crc)
+    {
+        ready_to_receive(false);
+        return false;
+    }
+
+    // Hand the caller a pointer to the message buffer
+    if (p) *p = rx_buffer;
+
+    // Tell the caller they have a message waiting to process
+    return true;
 }
 //=========================================================================================================
