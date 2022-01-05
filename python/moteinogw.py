@@ -206,7 +206,8 @@ class MoteinoGateway(threading.Thread):
         # Keep track of the most recent packet that we've sent out
         packet = packet_header + packet_data
 
-        for attempt in range(0, 3):
+        # Make multiple attempts to transmit the packet to the gateway
+        for attempt in range(0, 5):
             self.event.clear()
             self.packet_ack = False
             self.comport.write(packet)
