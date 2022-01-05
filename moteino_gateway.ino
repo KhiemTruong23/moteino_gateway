@@ -221,7 +221,7 @@ void handle_incoming_radio_packet()
     packet.dst_node    = Radio.TARGETID;
     packet.data_len    = Radio.DATALEN;
     memcpy(packet.data,  Radio.DATA, packet.data_len);
-    UART.transmit_raw((unsigned char*)&packet);
+    UART.transmit_raw(raw);
 }
 //=========================================================================================================
 
