@@ -11,10 +11,11 @@
 uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 
 //=========================================================================================================
-// DEVICE_TYPE: 0 = AVR1284-SerialPort0.  1=AVR1284-SerialPort1  2=AVR328
+// DEVICE_TYPE: 0 = AVR1284p-SerialPort0.  1 = AVR1284p-SerialPort1   2 = AVR328p
 //=========================================================================================================
 #define DEVICE_TYPE 2
 
+// AVR-1284p, Serial Port 0
 #if DEVICE_TYPE == 0
     #define xUBRRH UBRR0H
     #define xUBRRL UBRR0L
@@ -29,6 +30,7 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 #endif
 
 
+// AVR-1284p, Serial Port 1
 #if DEVICE_TYPE == 1
     #define xUBRRH UBRR1H
     #define xUBRRL UBRR1L
@@ -43,6 +45,7 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 #endif
 
 
+// AVR-328p
 #if DEVICE_TYPE == 2
     #define xUBRRH UBRR0H
     #define xUBRRL UBRR0L
@@ -55,10 +58,6 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
     #define bitRXCIE (1 << RXCIE0)
     #define xUSART_RX_vect USART_RX_vect
 #endif
-
-
-
-
 //=========================================================================================================
 
 
