@@ -7,7 +7,6 @@ if __name__ == '__main__':
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
-    print("Initial packet was", packet)
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
@@ -19,11 +18,11 @@ if __name__ == '__main__':
     counter = 0
     response_id = 0
 
-    #while True:
-    #    counter = counter + 1;
-    #    message = "Hello %i" % (counter)
-    #    gw.echo(bytes(message, 'utf-8'))
-
+    # Change this to "while True:" to bombard the serial interface with messages
+    while False:
+        counter = counter + 1;
+        message = "Hello %i" % (counter)
+        gw.echo(bytes(message, 'utf-8'))
 
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     while True:
