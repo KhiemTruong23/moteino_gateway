@@ -60,6 +60,14 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 #endif
 //=========================================================================================================
 
+enum rx_state_t
+{
+    WAIT_PROLOGUE_1,
+    WAIT_PROLOGUE_2,
+    WAIT_PACKET_COMPLETE
+};
+
+
 
 //=========================================================================================================
 // The incoming serial buffer
@@ -68,8 +76,16 @@ static volatile unsigned char rx_buffer[256];
 static volatile unsigned char* rx_ptr;
 static volatile unsigned char rx_count;
 static volatile unsigned long rx_start;
+static          rx_state_t    rx_state;
 //=========================================================================================================
 
+
+//=========================================================================================================
+// These messages are used to ACK or NAK the receipt of a prologue or a packet
+//=========================================================================================================
+static const unsigned char ACK[] = {3, 0, SP_READY};
+static const unsigned char NAK[] = {3, 0, SP_NAK};
+//=========================================================================================================
 
 
 //=========================================================================================================
@@ -77,10 +93,19 @@ static volatile unsigned long rx_start;
 //=========================================================================================================
 ISR(xUSART_RX_vect)
 {
+    // Store the incoming byte into the rx buffer
     *rx_ptr++ = xUDR;
-    if (++rx_count == 1) rx_start = millis();
+
+    // If this is the first or second byte in the buffer, record when we received it
+    if (rx_count < 2) rx_start = millis();
+    
+    // We now have one more byte in the rx buffer
+    ++rx_count;
 }
 //=========================================================================================================
+
+
+
 
 
 //=========================================================================================================
@@ -106,25 +131,6 @@ void CPacketUART::transmit_raw(const void* vp)
 }
 //=========================================================================================================
 
-
-//=========================================================================================================
-// ready_to_receive() - Tells the backhaul that we are ready to receive a serial packet
-//=========================================================================================================
-void CPacketUART::ready_to_receive(bool is_ACK)
-{
-    static const unsigned char ack[] = {3, 0, SP_READY};
-    static const unsigned char nak[] = {3, 0, SP_NAK};
-    
-    // We have no bytes in our RX buffer
-    rx_buffer[0] = rx_count = 0;
-
-    // The next incoming byte gets stored in the first byte of the RX buffer
-    rx_ptr = rx_buffer;
-
-    // Tell the backhaul that we're ready for another packet
-    transmit_raw(is_ACK ? ack : nak);
-}
-//=========================================================================================================
 
 
 //=========================================================================================================
@@ -155,9 +161,9 @@ void CPacketUART::begin(uint32_t baud)
     // Enable the interrupt that gets generated every time a byte is received
     xUCSRB |= bitRXCIE;
 
-    // Tell the backhaul that we're ready to receive a packet
-    ready_to_receive(true);
-
+    // Make the RX machinery ready to receive a packet
+    make_ready_to_receive();
+    
     // Tell the backhaulthat we're alive
     indicate_alive();
 
@@ -197,49 +203,156 @@ void CPacketUART::indicate_alive()
 //=========================================================================================================
 
 
+//=========================================================================================================
+// rx_state_machine() - Runs the state machine that manages the reliable receipt of serial packets
+//=========================================================================================================
+bool CPacketUART::rx_state_machine()
+{
+    unsigned long elapsed;
+
+    // If we're waiting for the first prologue byte to arrive...
+    if (rx_state == WAIT_PROLOGUE_1)
+    {
+        // If no bytes have arrived, there is no message waiting
+        if (rx_count == 0) return false;
+
+        // If we've received at least one byte, we're waiting for the 2nd prologue byte
+        rx_state = WAIT_PROLOGUE_2;            
+    }
+
+    // If we're waiting for the 2nd prologue byte to arrive and it hasn't...
+    if (rx_state == WAIT_PROLOGUE_2 && rx_count == 1)
+    {
+        // How long have we been waiting the arrival of the second?
+        elapsed = millis() - rx_start;
+            
+        // If the 2nd prologue byte is overdue, send the client a NAK
+        if (elapsed > 20)
+        {
+            make_ready_to_receive();
+            transmit_raw(NAK);
+        }
+
+        // Indicate that no packet has yet arrived
+        return false;
+    }
+
+    // If we're waiting for the 2nd prologue byte to arrive and it has...
+    if (rx_state == WAIT_PROLOGUE_2 && rx_count == 2)
+    {
+        // If the prologue bytes are complements of each other, we have a good prologue
+        if (rx_buffer[0] == ~rx_buffer[1])
+        {
+            // Throw away the 2nd prologue byte
+            --rx_ptr;
+            --rx_count;
+
+            // Tell the client side he may continue sending
+            transmit_raw(ACK);
+
+            // Now we're waiting for the rest of the packet to arrive
+            rx_state = WAIT_PACKET_COMPLETE;
+        }
+
+        // If we get here, one of the prologue bytes was corrupted by noise
+        else
+        {
+            make_ready_to_receive();
+            transmit_raw(NAK);
+        }
+
+        // We don't have a packet waiting
+        return false;
+    }
+
+    //-----------------------------------------------------------------------------------
+    // If we get here, we are by definition waiting for the rest of the packet to arrive
+    //-----------------------------------------------------------------------------------
+    
+    // If we don't have at least two bytes in the buffer, we haven't received any 
+    // bytes after the prologue yet
+    if (rx_count == 1) return false;
+
+    // If we don't have a complete message yet...
+    if (rx_count != rx_buffer[0])
+    {
+        // How long have we been waiting for the the packet to complete?
+        elapsed = millis() - rx_start; 
+
+        // If we've timed out, send a NAK to the client
+        if (elapsed > 20)
+        {
+            make_ready_to_receive();
+            transmit_raw(NAK);
+        }
+
+        // We don't yet have a complete packet
+        return false;
+    }
+
+    //-----------------------------------------------------------------------------------
+    // If we get here, we have a complete packet!
+    //-----------------------------------------------------------------------------------
+
+    // Extract the packet CRC that the client computed
+    uint8_t old_crc = rx_buffer[1];
+
+    // Compute our own CRC of the packet
+    uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
+    
+    // If the CRC's don't match, reject this packet
+    if (old_crc != new_crc)
+    {
+        make_ready_to_receive();
+        transmit_raw(NAK);
+        return false;
+    }
+
+    // If we get here, we have received an entire packet, and the CRCs match!
+    return true;
+}
+//=========================================================================================================
 
 
 //=========================================================================================================
 // is_message_waiting() - Returns true if a message is waiting in the receive buffer
 //=========================================================================================================
-bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
+bool CPacketUART::is_message_waiting(unsigned char** p)
 {
-    // If there are no bytes in the receive buffer, we're done
-    if (rx_count == 0) return false;
-    
-    // Is there an entire packet waiting in the input buffer?
-    bool is_packet_waiting = (rx_buffer[0] == rx_count);
-
-    // If we don't have a complete packet waiting...
-    if (!is_packet_waiting)
-    {
-        // How long have we been waiting for the packet to complete?
-        unsigned long elapsed = millis() - rx_start;
-
-        // If we've timed out waiting for the packet to complete, tell the client
-        if (elapsed > 20) ready_to_receive(false);
-
-        // And tell the caller that there's no packet waiting
-        return false;
-    }
-
-    //--------------------------------------------------------------
-    //  If we get here, there is a complete packet waiting for us
-    //--------------------------------------------------------------
-
-    // Check the CRC
-    uint8_t old_crc = rx_buffer[1];
-    uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
-    if (old_crc != new_crc)
-    {
-        ready_to_receive(false);
-        return false;
-    }
 
     // Hand the caller a pointer to the message buffer
     if (p) *p = rx_buffer;
 
-    // Tell the caller they have a message waiting to process
-    return true;
+    // Tell the caller whether they have a message waiting to process
+    return rx_state_machine();
+}
+//=========================================================================================================
+
+
+//=========================================================================================================
+// make_ready_to_receive() - Makes the RX machinery ready to receive a new packet
+//=========================================================================================================
+void CPacketUART::make_ready_to_receive()
+{
+    // We have no bytes in our RX buffer
+    rx_buffer[0] = rx_count = 0;
+
+    // The next incoming byte gets stored in the first byte of the RX buffer
+    rx_ptr = rx_buffer;
+
+    // We're waiting for the arrival of the first prologue byte
+    rx_state = WAIT_PROLOGUE_1;
+}
+//=========================================================================================================
+
+
+
+//=========================================================================================================
+// acknowledge_handled_packet() - Tells the client he is free to transmit a new packet to us
+//=========================================================================================================
+void CPacketUART::acknowledge_handled_packet()
+{
+    make_ready_to_receive();
+    transmit_raw(ACK);
 }
 //=========================================================================================================

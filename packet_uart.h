@@ -24,11 +24,11 @@ public:
     // Call this once at boot with the desired baudrate.  250000 is optimal
     void    begin(uint32_t baud);
 
-    // Sets up the buffer to receive a packet and sends a "ready to receive" message
-    void    ready_to_receive(bool is_ACK);
-
-    // Returns true if a message is waiting
+    // Call this to find out if there is a packet waiting to be processed
     bool    is_message_waiting(unsigned char** p = nullptr);
+
+    // Call this to acknowledge an incoming packet has been handled
+    void    acknowledge_handled_packet();
 
     // Print a debug string on the client
     void    printf(const char* format, ...);
@@ -38,6 +38,15 @@ public:
 
     // Send a raw packet to the client
     void    transmit_raw(const void* vp);
+
+protected:
+
+    // The state machine that manages the receipt of incoming serial packets
+    bool    rx_state_machine();
+
+    // This places the rx machinery ready to receive an incoming packet
+    void    make_ready_to_receive();
+
 };
 
 
