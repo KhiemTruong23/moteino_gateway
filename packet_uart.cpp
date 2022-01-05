@@ -87,10 +87,10 @@ void CPacketUART::transmit_raw(const void* vp)
 //=========================================================================================================
 // ready_to_receive() - Tells the backhaul that we are ready to receive a serial packet
 //=========================================================================================================
-void CPacketUART::ready_to_receive()
+void CPacketUART::ready_to_receive(bool is_ACK)
 {
-    // This is the message that says "we're ready to receive another packet"
-    const unsigned char ack[] = {3, 0, SP_READY};
+    static const unsigned char ack[] = {3, 0, SP_READY};
+    static const unsigned char nak[] = {3, 0, SP_NAK};
     
     // We have no bytes in our RX buffer
     rx_buffer[0] = rx_count = 0;
@@ -99,7 +99,7 @@ void CPacketUART::ready_to_receive()
     rx_ptr = rx_buffer;
 
     // Tell the backhaul that we're ready for another packet
-    transmit_raw(ack);
+    transmit_raw(is_ACK ? ack : nak);
 }
 //=========================================================================================================
 
@@ -133,7 +133,7 @@ void CPacketUART::begin(uint32_t baud)
     xUCSRB |= bitRXCIE;
 
     // Tell the backhaul that we're ready to receive a packet
-    ready_to_receive();
+    ready_to_receive(true);
 
     // Tell the backhaulthat we're alive
     indicate_alive();
@@ -187,11 +187,17 @@ bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
     // If there is a packet waiting, hand the caller a pointer to the message buffer
     if (is_packet_waiting && p) *p = rx_buffer;
 
+    // If there's an incoming packet waiting, check to see if the CRC is correct.
+    // If the CRC isn't correct, reject the packet
     if (is_packet_waiting)
     {
         uint8_t old_crc = rx_buffer[1];
         uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
-        if (old_crc != new_crc) printf("CRC mismatch!");
+        if (old_crc != new_crc)
+        {
+            ready_to_receive(false);
+            return false;
+        }
     }
 
     // Tell the caller whether they have a message waiting to process

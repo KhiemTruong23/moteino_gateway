@@ -13,7 +13,8 @@ enum
     SP_INIT_RADIO  = 0x05,  // From client
     SP_ENCRYPT_KEY = 0x06,  // From client
     SP_FROM_RADIO  = 0x07,  // To client
-    SP_TO_RADIO    = 0x08   // From client
+    SP_TO_RADIO    = 0x08,  // From client
+    SP_NAK         = 0x09   // To client
 };
 
 class CPacketUART
@@ -24,7 +25,7 @@ public:
     void    begin(uint32_t baud);
 
     // Sets up the buffer to receive a packet and sends a "ready to receive" message
-    void    ready_to_receive();
+    void    ready_to_receive(bool is_ACK);
 
     // Returns true if a message is waiting
     bool    is_message_waiting(unsigned char** p = nullptr);

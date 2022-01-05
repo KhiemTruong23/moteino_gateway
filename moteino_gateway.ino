@@ -207,7 +207,7 @@ void dispatch_serial_message(const unsigned char* packet)
     }
     
     // Tell the backhaul that we processed his command
-    UART.ready_to_receive();
+    UART.ready_to_receive(true);
 }
 //=========================================================================================================
 
