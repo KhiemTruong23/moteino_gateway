@@ -16,7 +16,7 @@ if __name__ == '__main__':
     print("Initialized!")
     counter = 0
 
-    # Sit in a loop, displaying incoming radio packets
+    # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     while True:
         packet = gw.wait_for_message()
         if isinstance(packet, moteinogw.RadioPacket):
