@@ -8,6 +8,7 @@
 #include <arduino.h>
 #include "packet_uart.h"
 
+uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 
 //=========================================================================================================
 // Change this to "#if 0" to use USART0, and "#if 1" to use USART1
@@ -163,21 +164,6 @@ void CPacketUART::printf(const char* format, ...)
 //=========================================================================================================
 
 //=========================================================================================================
-// echo() - Performs a printf to the client side
-//=========================================================================================================
-void CPacketUART::echo(const unsigned char* s, int length)
-{
-    unsigned char buffer[256];
-    buffer[0] = length + 3;
-    buffer[1] = 0;
-    buffer[2] = SP_PRINT;
-    memcpy(buffer+3, s, length);
-    transmit_raw(buffer);
-}
-//=========================================================================================================
-
-
-//=========================================================================================================
 // indicate_alive() - Tell the client we're up and running
 //=========================================================================================================
 void CPacketUART::indicate_alive()
@@ -200,6 +186,13 @@ bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
 
     // If there is a packet waiting, hand the caller a pointer to the message buffer
     if (is_packet_waiting && p) *p = rx_buffer;
+
+    if (is_packet_waiting)
+    {
+        uint8_t old_crc = rx_buffer[1];
+        uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
+        if (old_crc != new_crc) printf("CRC mismatch!");
+    }
 
     // Tell the caller whether they have a message waiting to process
     return is_packet_waiting;

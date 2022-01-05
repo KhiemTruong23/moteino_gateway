@@ -35,9 +35,6 @@ public:
     // Tell the client we're alive
     void    indicate_alive();
 
-    // Print arbitray data to the client
-    void    echo(const unsigned char* s, int length);
-
     // Send a raw packet to the client
     void    transmit_raw(const void* vp);
 };
