@@ -27,9 +27,28 @@ crc8_table = [
 ]
 # ==========================================================================================================
 
+'''
+//=========================================================================================================
+// fast_crc8() - Uses the lookup table to generate an 8-bit CRC
+//=========================================================================================================
+uint8_t fast_crc8(const uint8_t* in, uint8_t count)
+{
+    uint8_t crc = 0xFF;
+    while (count--) crc = pgm_read_byte(crc8_table + (crc ^ *in++));
+    return crc;
+}
+//=========================================================================================================
+'''
 
-
-
+# ==========================================================================================================
+# fast_crc8() - Computes the 8-bit CRC of a byte string
+# ==========================================================================================================
+def fast_crc8(data):
+    crc = 0xFF
+    for value in data:
+        crc = crc8_table[crc ^ value]
+    return crc
+# ==========================================================================================================
 
 
 
@@ -190,9 +209,10 @@ class MoteinoGateway(threading.Thread):
     #                 the gateway to send the acknowledgement
     # ------------------------------------------------------------------------------
     def send_packet(self, packet_data):
+        crc = fast_crc8(packet_data)
         packet_length = len(packet_data) + 2
         packet_header = packet_length.to_bytes(1, 'little')
-        packet_header = packet_header + b'\x00'
+        packet_header = packet_header + crc.to_bytes(1, 'little')
 
         self.event.clear()
         self.comport.write(packet_header + packet_data)
