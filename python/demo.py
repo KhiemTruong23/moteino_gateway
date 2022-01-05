@@ -22,10 +22,7 @@ if __name__ == '__main__':
     while True:
         packet = gw.wait_for_message()
         if isinstance(packet, moteinogw.RadioPacket):
-            #print("From :", packet.src_node)
-            #print("To   :", packet.dst_node)
-            #print("Data :", packet.data)
-            #print()
+            print("From :", packet.src_node, "To :", packet.dst_node, "Data :", packet.data)
 
             counter = counter + 1
             if counter % 1 == 0:

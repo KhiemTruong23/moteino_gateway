@@ -74,6 +74,7 @@ class MoteinoGateway(threading.Thread):
     SP_ENCRYPT_KEY = b'\x06'     # To Gateway
     SP_FROM_RADIO  =   0x07      # From Gateway
     SP_TO_RADIO    = b'\x08'     # To Gateway
+    SP_NAK         =   0x09      # From Gateway
 
     # ------------------------------------------------------------------------------
     # Constructor - Just calls the threading base-class constructor and creates
@@ -179,7 +180,6 @@ class MoteinoGateway(threading.Thread):
         packet = self.SP_TO_RADIO
         packet = packet + node_id.to_bytes(2, 'little')
         packet = packet + len(data).to_bytes(1, 'little')
-        packet = packet + b'\x00\x00'
         packet = packet + data
         self.send_packet(packet)
     # ------------------------------------------------------------------------------
@@ -265,6 +265,11 @@ class MoteinoGateway(threading.Thread):
 
             # If this is a "Ready to receive" notification, tell the other thread
             if packet_type == self.SP_READY:
+                self.event.set()
+                continue
+
+            if packet_type == self.SP_NAK:
+                print("Got NAK!")
                 self.event.set()
                 continue
 

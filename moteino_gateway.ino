@@ -63,8 +63,6 @@ struct to_radio_t
     uint8_t  packet_type;
     uint16_t dst_node;
     uint8_t  data_len;
-    uint8_t  crc;
-    uint8_t  trans_id;
     uint8_t  data[0];
 };
 //=========================================================================================================
@@ -161,13 +159,10 @@ void handle_to_radio(const unsigned char* raw)
         return;
     }
 
-    // Compute a CRC of everything after the CRC itself
-    msg.crc = fast_crc8(&msg.crc+1, msg.data_len+1);
-
     if (strncmp(msg.data, "I see you ", 10) != 0) UART.printf("Bad outgoing data!");
 
     // Ask the radio to send this message
-    Radio.send(msg.dst_node, &msg.crc, msg.data_len + 2);
+    Radio.send(msg.dst_node, &msg.data, msg.data_len);
 }
 //=========================================================================================================
 
