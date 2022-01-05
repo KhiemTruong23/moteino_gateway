@@ -18,9 +18,19 @@ ForkedRFM69 Radio;
 //=========================================================================================================
 // Formats of messages to and from the gateway
 //=========================================================================================================
+struct echo_t
+{
+    uint8_t   packet_len;
+    uint8_t   uart_crc;
+    uint8_t   packet_type;
+    uint8_t   data[0];
+};
+
+
 struct init_radio_t
 {
     uint8_t   packet_len;
+    uint8_t   uart_crc;
     uint8_t   packet_type;
     uint16_t  frequency;
     uint16_t  node_id;
@@ -30,6 +40,7 @@ struct init_radio_t
 struct encrypt_key_t
 {
     uint8_t   packet_len;
+    uint8_t   uart_crc;
     uint8_t   packet_type;
     uint8_t   encryption_key[16];
 };
@@ -37,6 +48,7 @@ struct encrypt_key_t
 struct from_radio_t
 {
     uint8_t  packet_len;
+    uint8_t  uart_crc;
     uint8_t  packet_type;
     uint16_t src_node;
     uint16_t dst_node;    
@@ -47,6 +59,7 @@ struct from_radio_t
 struct to_radio_t
 {
     uint8_t  packet_len;
+    uint8_t  uart_crc;
     uint8_t  packet_type;
     uint16_t dst_node;
     uint8_t  data_len;
@@ -60,10 +73,27 @@ struct to_radio_t
 //=========================================================================================================
 // setup() - Runs once at boot
 //=========================================================================================================
-void setup() {UART.begin(250000);}
+void setup()
+{
+    UART.begin(250000);
+}
 //=========================================================================================================
 
+//=========================================================================================================
+// handle_echo() - Echos back data as an SP_PRINT command
+//=========================================================================================================
+void handle_echo(const unsigned char* raw)
+{
+    // Map our structure on top of the raw packet
+    map_struct(echo_t, msg);
 
+    // Replace the SP_ECHO with an SP_PRINT
+    msg.packet_type = SP_PRINT;
+
+    // And send the packet to the client
+    UART.transmit_raw(raw);
+}
+//=========================================================================================================
 
 //=========================================================================================================
 // handle_init_radio() - Initialize the radio 
@@ -149,13 +179,14 @@ void handle_to_radio(const unsigned char* raw)
 void dispatch_serial_message(const unsigned char* packet)
 {
     unsigned char packet_len  = packet[0];
-    unsigned char packet_type = packet[1];
-    unsigned char* msg = packet + 2;
+    unsigned char packet_crc  = packet[1];
+    unsigned char packet_type = packet[2];
+    unsigned char* msg = packet + 3;
 
     switch(packet_type)
     {
         case SP_ECHO:
-            UART.echo(msg, packet_len - 2);
+            handle_echo(packet);
             break;
 
         case SP_INIT_RADIO:

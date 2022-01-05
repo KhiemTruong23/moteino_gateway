@@ -89,7 +89,7 @@ void CPacketUART::transmit_raw(const void* vp)
 void CPacketUART::ready_to_receive()
 {
     // This is the message that says "we're ready to receive another packet"
-    const unsigned char ack[] = {2, SP_READY};
+    const unsigned char ack[] = {3, 0, SP_READY};
     
     // We have no bytes in our RX buffer
     rx_buffer[0] = rx_count = 0;
@@ -152,11 +152,12 @@ void CPacketUART::printf(const char* format, ...)
     va_list va;
 
     va_start(va, format);
-    int len = vsprintf(buffer+2, format, va);
+    int len = vsprintf(buffer+3, format, va);
     va_end(va);
 
-    buffer[0] = len + 2;
-    buffer[1] = SP_PRINT;
+    buffer[0] = len + 3;
+    buffer[1] = 0;
+    buffer[2] = SP_PRINT;
     transmit_raw(buffer);
 }
 //=========================================================================================================
@@ -167,9 +168,10 @@ void CPacketUART::printf(const char* format, ...)
 void CPacketUART::echo(const unsigned char* s, int length)
 {
     unsigned char buffer[256];
-    buffer[0] = length + 2;
-    buffer[1] = SP_PRINT;
-    memcpy(buffer+2, s, length);
+    buffer[0] = length + 3;
+    buffer[1] = 0;
+    buffer[2] = SP_PRINT;
+    memcpy(buffer+3, s, length);
     transmit_raw(buffer);
 }
 //=========================================================================================================
@@ -180,7 +182,7 @@ void CPacketUART::echo(const unsigned char* s, int length)
 //=========================================================================================================
 void CPacketUART::indicate_alive()
 {
-    unsigned char packet[] = {2, SP_ALIVE};
+    unsigned char packet[] = {3, 0, SP_ALIVE};
     transmit_raw(packet);
 }
 //=========================================================================================================

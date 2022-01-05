@@ -6,6 +6,7 @@ if __name__ == '__main__':
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
+    print("Initial packet was", packet)
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
