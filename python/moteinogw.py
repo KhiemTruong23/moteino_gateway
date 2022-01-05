@@ -203,17 +203,32 @@ class MoteinoGateway(threading.Thread):
         # Compute the CRC of the packet data (including the packet type)
         crc = fast_crc8(packet_data)
 
-        # The total length of the packet includes the length byte and the CRC
-        packet_length = len(packet_data) + 2
-
-        # The first byte of the packet is the total length of the packet
-        packet_header = packet_length.to_bytes(1, 'little')
-
-        # The second byte of the packet is the CRC of the rest of the packet
-        packet_header = packet_header + crc.to_bytes(1, 'little')
-
         # Build the packet
-        packet = packet_header + packet_data
+        packet = crc.to_bytes(1, 'little') + packet_data
+
+        # The total length of the packet includes the length byte
+        packet_length = len(packet_data) + 1
+
+        # Create the two-byte packet prologue
+        prologue = bytes([packet_length, ~packet_length & 0xFF])
+
+        # Make multiple attempts to transmit the prologue
+        for attempt in range(0, 5):
+            self.event.clear()
+            self.packet_ack = False
+
+            self.comport.write(prologue)
+            if not self.event.wait(1):
+                print("Timed out while waiting for prolgue ACK")
+                continue
+
+            if self.packet_ack:
+                break
+
+        # If we were unable to get an ACK from the prologue, give up
+        if not self.packet_ack:
+            print("Failed to receive an ACK for packet prologue")
+            return False
 
         # Make multiple attempts to transmit the packet to the gateway
         for attempt in range(0, 5):
@@ -222,9 +237,12 @@ class MoteinoGateway(threading.Thread):
             self.comport.write(packet)
             if not self.event.wait(5):
                 print("Timed out waiting for serial response!")
-            if self.packet_ack: return
+                continue
+            if self.packet_ack:
+                return True
 
         print("Gave up sending packet!")
+        return False
     # ------------------------------------------------------------------------------
 
 
