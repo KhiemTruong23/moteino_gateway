@@ -1,12 +1,13 @@
 #include <stdint.h>
 #include "packet_uart.h"
-#include "forked_RFM69.h"
+#include "forked_RFM69_ATC.h"
 
 
 uint8_t fast_crc8(const uint8_t* in, uint8_t count);
-bool is_radio_initialized = false;
-CPacketUART UART;
-ForkedRFM69 Radio;
+
+bool            is_radio_initialized = false;
+CPacketUART     UART;
+ForkedRFM69_ATC Radio;
 
 //=========================================================================================================
 // maps a structure onto a buffer named "raw"
@@ -158,8 +159,6 @@ void handle_to_radio(const unsigned char* raw)
         UART.printf("Radio not initialized!");
         return;
     }
-
-    if (strncmp(msg.data, "I see you ", 10) != 0) UART.printf("Bad outgoing data!");
 
     // Ask the radio to send this message
     Radio.send(msg.dst_node, msg.data, msg.data_len);
