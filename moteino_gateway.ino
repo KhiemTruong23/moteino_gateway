@@ -212,7 +212,8 @@ void dispatch_serial_message(const unsigned char* packet)
 //=========================================================================================================
 void handle_incoming_radio_packet()
 {
-    from_radio_t    packet;
+    unsigned char raw[128];
+    map_struct(from_radio_t, packet);
 
     packet.packet_len  = sizeof(packet) + Radio.DATALEN;
     packet.packet_type = SP_FROM_RADIO;
