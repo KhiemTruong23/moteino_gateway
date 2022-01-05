@@ -15,16 +15,19 @@ if __name__ == '__main__':
 
     print("Initialized!")
     counter = 0
+    response_id = 0
 
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     while True:
         packet = gw.wait_for_message()
         if isinstance(packet, moteinogw.RadioPacket):
-            print("From :", packet.src_node)
-            print("To   :", packet.dst_node)
-            print("Data :", packet.data)
-            print()
+            #print("From :", packet.src_node)
+            #print("To   :", packet.dst_node)
+            #print("Data :", packet.data)
+            #print()
 
             counter = counter + 1
-            if counter % 4 == 0:
-                gw.send_radio_packet(packet.src_node, b'I see you')
+            if counter % 1 == 0:
+                response_id = response_id + 1
+                response = 'I see you %i' % (response_id)
+                gw.send_radio_packet(packet.src_node, bytes(response, 'utf-8'))

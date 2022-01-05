@@ -143,6 +143,7 @@ class MoteinoGateway(threading.Thread):
         packet = self.SP_TO_RADIO
         packet = packet + node_id.to_bytes(2, 'little')
         packet = packet + len(data).to_bytes(1, 'little')
+        packet = packet + b'\x00\x00'
         packet = packet + data
         self.send_packet(packet)
     # ------------------------------------------------------------------------------
