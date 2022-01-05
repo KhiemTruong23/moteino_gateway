@@ -11,20 +11,11 @@
 uint8_t fast_crc8(const uint8_t* in, uint8_t count);
 
 //=========================================================================================================
-// Change this to "#if 0" to use USART0, and "#if 1" to use USART1
+// DEVICE_TYPE: 0 = AVR1284-SerialPort0.  1=AVR1284-SerialPort1  2=AVR328
 //=========================================================================================================
-#if 0
-    #define xUBRRH UBRR1H
-    #define xUBRRL UBRR1L
-    #define xUCSRA UCSR1A
-    #define xUCSRB UCSR1B
-    #define xUCSRC UCSR1C
-    #define xUDR   UDR1
-    #define bitRXEN  (1 << RXEN1)
-    #define bitTXEN  (1 << TXEN1)
-    #define bitRXCIE (1 << RXCIE1)
-    #define xUSART_RX_vect USART1_RX_vect
-#else
+#define DEVICE_TYPE 2
+
+#if DEVICE_TYPE == 0
     #define xUBRRH UBRR0H
     #define xUBRRL UBRR0L
     #define xUCSRA UCSR0A
@@ -36,6 +27,38 @@ uint8_t fast_crc8(const uint8_t* in, uint8_t count);
     #define bitRXCIE (1 << RXCIE0)
     #define xUSART_RX_vect USART0_RX_vect
 #endif
+
+
+#if DEVICE_TYPE == 1
+    #define xUBRRH UBRR1H
+    #define xUBRRL UBRR1L
+    #define xUCSRA UCSR1A
+    #define xUCSRB UCSR1B
+    #define xUCSRC UCSR1C
+    #define xUDR   UDR1
+    #define bitRXEN  (1 << RXEN1)
+    #define bitTXEN  (1 << TXEN1)
+    #define bitRXCIE (1 << RXCIE1)
+    #define xUSART_RX_vect USART1_RX_vect
+#endif
+
+
+#if DEVICE_TYPE == 2
+    #define xUBRRH UBRR0H
+    #define xUBRRL UBRR0L
+    #define xUCSRA UCSR0A
+    #define xUCSRB UCSR0B
+    #define xUCSRC UCSR0C
+    #define xUDR   UDR0
+    #define bitRXEN  (1 << RXEN0)
+    #define bitTXEN  (1 << TXEN0)
+    #define bitRXCIE (1 << RXCIE0)
+    #define xUSART_RX_vect USART_RX_vect
+#endif
+
+
+
+
 //=========================================================================================================
 
 

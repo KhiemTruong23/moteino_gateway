@@ -3,7 +3,7 @@ import time
 
 if __name__ == '__main__':
     gw = moteinogw.MoteinoGateway()
-    gw.startup('COM10')
+    gw.startup('COM11')
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
