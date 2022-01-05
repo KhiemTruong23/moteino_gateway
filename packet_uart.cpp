@@ -195,11 +195,7 @@ bool CPacketUART::is_message_waiting(unsigned char** p = nullptr)
         unsigned long elapsed = millis() - rx_start;
 
         // If we've timed out waiting for the packet to complete, tell the client
-        if (elapsed > 20)
-        {
-            printf("DROPPED BYTE!");
-            ready_to_receive(false);
-        }
+        if (elapsed > 20) ready_to_receive(false);
 
         // And tell the caller that there's no packet waiting
         return false;

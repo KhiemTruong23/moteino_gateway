@@ -64,6 +64,7 @@ class MoteinoGateway(threading.Thread):
     event      = None  # An event that signals receipt of an ack from the gateway
     pipe_in    = None  # The read-side of a socket used for notifications
     pipe_out   = None  # The write-side of a socket used for notifications
+    packet_ack = False # True when the most recently sent packet gets acknowledged
     local_port = 32122
 
     SP_PRINT       =   0x01      # From Gateway
@@ -108,7 +109,7 @@ class MoteinoGateway(threading.Thread):
         sock.listen(1)
 
         # Open the connection to the serial port
-        self.comport = serial.Serial(port, 115200)
+        self.comport = serial.Serial(port, 250000)
 
         # Launch the thread that does a blocking read on the serial port
         self.launch_serial_reader_thread()
@@ -203,12 +204,17 @@ class MoteinoGateway(threading.Thread):
         packet_header = packet_header + crc.to_bytes(1, 'little')
 
         # Keep track of the most recent packet that we've sent out
-        self.last_packet_sent = packet_header + packet_data
+        packet = packet_header + packet_data
 
-        self.event.clear()
-        self.comport.write(self.last_packet_sent)
-        if not self.event.wait(5):
-            print("Timed out waiting for serial response!")
+        for attempt in range(0, 3):
+            self.event.clear()
+            self.packet_ack = False
+            self.comport.write(packet)
+            if not self.event.wait(5):
+                print("Timed out waiting for serial response!")
+            if self.packet_ack: return
+
+        print("Gave up sending packet!")
     # ------------------------------------------------------------------------------
 
 
@@ -269,11 +275,13 @@ class MoteinoGateway(threading.Thread):
 
             # If this is a "Ready to receive" notification, tell the other thread
             if packet_type == self.SP_READY:
+                self.packet_ack = True
                 self.event.set()
                 continue
 
+            # If this is a NAK, tell the other thread
             if packet_type == self.SP_NAK:
-                print("Got NAK!")
+                self.packet_ack = False
                 self.event.set()
                 continue
 
