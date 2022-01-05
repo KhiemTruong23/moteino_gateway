@@ -37,6 +37,7 @@ class MoteinoGateway(threading.Thread):
     SP_INIT_RADIO  = b'\x05'     # To Gateway
     SP_ENCRYPT_KEY = b'\x06'     # To Gateway
     SP_FROM_RADIO  =   0x07      # From Gateway
+    SP_TO_RADIO    = b'\x08'     # To Gateway
 
     # ------------------------------------------------------------------------------
     # Constructor - Just calls the threading base-class constructor and creates
@@ -134,6 +135,17 @@ class MoteinoGateway(threading.Thread):
         self.send_packet(self.SP_ENCRYPT_KEY + key)
     # ------------------------------------------------------------------------------
 
+
+    # ------------------------------------------------------------------------------
+    # send_radio_packet() - Sends a data-packet to a node via the radio
+    # ------------------------------------------------------------------------------
+    def send_radio_packet(self, node_id, data):
+        packet = self.SP_TO_RADIO
+        packet = packet + node_id.to_bytes(2, 'little')
+        packet = packet + len(data).to_bytes(1, 'little')
+        packet = packet + data
+        self.send_packet(packet)
+    # ------------------------------------------------------------------------------
 
 
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>

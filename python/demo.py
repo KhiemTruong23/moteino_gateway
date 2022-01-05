@@ -14,6 +14,7 @@ if __name__ == '__main__':
     gw.set_encryption_key(b'1234123412341234')
 
     print("Initialized!")
+    counter = 0
 
     # Sit in a loop, displaying incoming radio packets
     while True:
@@ -23,3 +24,7 @@ if __name__ == '__main__':
             print("To   :", packet.dst_node)
             print("Data :", packet.data)
             print()
+
+            counter = counter + 1
+            if counter % 4 == 0:
+                gw.send_radio_packet(packet.src_node, b'I see you')
