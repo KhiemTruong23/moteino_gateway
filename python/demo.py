@@ -36,4 +36,4 @@ if __name__ == '__main__':
                 response_id = response_id + 1
                 response = 'I see you %i' % (response_id)
                 gw.send_radio_packet(packet.src_node, bytes(response, 'utf-8'))
-                #gw.echo(bytes(response, 'utf-8'))
+

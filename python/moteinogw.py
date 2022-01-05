@@ -67,15 +67,15 @@ class MoteinoGateway(threading.Thread):
     packet_ack = False # True when the most recently sent packet gets acknowledged
     local_port = 32122
 
-    SP_PRINT       =   0x01      # From Gateway
-    SP_READY       =   0x02      # From Gateway
-    SP_ECHO        = b'\x03'     # To Gateway
-    SP_ALIVE       =   0x04      # From Gateway
-    SP_INIT_RADIO  = b'\x05'     # To Gateway
-    SP_ENCRYPT_KEY = b'\x06'     # To Gateway
-    SP_FROM_RADIO  =   0x07      # From Gateway
-    SP_TO_RADIO    = b'\x08'     # To Gateway
-    SP_NAK         =   0x09      # From Gateway
+    SP_PRINT       = 0x01      # From Gateway
+    SP_READY       = 0x02      # From Gateway
+    SP_ECHO        = 0x03      # To Gateway
+    SP_ALIVE       = 0x04      # From Gateway
+    SP_INIT_RADIO  = 0x05      # To Gateway
+    SP_ENCRYPT_KEY = 0x06      # To Gateway
+    SP_FROM_RADIO  = 0x07      # From Gateway
+    SP_TO_RADIO    = 0x08      # To Gateway
+    SP_NAK         = 0x09      # From Gateway
 
     # ------------------------------------------------------------------------------
     # Constructor - Just calls the threading base-class constructor and creates
@@ -145,7 +145,7 @@ class MoteinoGateway(threading.Thread):
     # echo() - Ask the gateway to echo a message back to us
     # ------------------------------------------------------------------------------
     def echo(self, packet_data):
-        self.send_packet(self.SP_ECHO + packet_data)
+        self.send_packet(self.SP_ECHO, packet_data)
     # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
@@ -156,11 +156,10 @@ class MoteinoGateway(threading.Thread):
     #         network_id = Between 0 and 255
     # ------------------------------------------------------------------------------
     def init_radio(self, frequency, node_id, network_id):
-        packet = self.SP_INIT_RADIO
-        packet = packet + frequency.to_bytes(2, 'little')
+        packet = frequency.to_bytes(2, 'little')
         packet = packet + node_id.to_bytes(2, 'little')
         packet = packet + network_id.to_bytes(1, 'little')
-        self.send_packet(packet)
+        self.send_packet(self.SP_INIT_RADIO, packet)
     # ------------------------------------------------------------------------------
 
 
@@ -170,7 +169,7 @@ class MoteinoGateway(threading.Thread):
     # The key must be exactly 16 bytes long
     # ------------------------------------------------------------------------------
     def set_encryption_key(self, key):
-        self.send_packet(self.SP_ENCRYPT_KEY + key)
+        self.send_packet(self.SP_ENCRYPT_KEY, key)
     # ------------------------------------------------------------------------------
 
 
@@ -178,11 +177,10 @@ class MoteinoGateway(threading.Thread):
     # send_radio_packet() - Sends a data-packet to a node via the radio
     # ------------------------------------------------------------------------------
     def send_radio_packet(self, node_id, data):
-        packet = self.SP_TO_RADIO
-        packet = packet + node_id.to_bytes(2, 'little')
+        packet = node_id.to_bytes(2, 'little')
         packet = packet + len(data).to_bytes(1, 'little')
         packet = packet + data
-        self.send_packet(packet)
+        self.send_packet(self.SP_TO_RADIO, packet)
     # ------------------------------------------------------------------------------
 
 
@@ -197,13 +195,24 @@ class MoteinoGateway(threading.Thread):
     # send_packet() - Sends a generic packet expressed as bytes and waits for
     #                 the gateway to send the acknowledgement
     # ------------------------------------------------------------------------------
-    def send_packet(self, packet_data):
+    def send_packet(self, packet_type, packet_data):
+
+        # Prepend the packet type to the packet data
+        packet_data = packet_type.to_bytes(1, 'little') + packet_data
+
+        # Compute the CRC of the packet data (including the packet type)
         crc = fast_crc8(packet_data)
+
+        # The total length of the packet includes the length byte and the CRC
         packet_length = len(packet_data) + 2
+
+        # The first byte of the packet is the total length of the packet
         packet_header = packet_length.to_bytes(1, 'little')
+
+        # The second byte of the packet is the CRC of the rest of the packet
         packet_header = packet_header + crc.to_bytes(1, 'little')
 
-        # Keep track of the most recent packet that we've sent out
+        # Build the packet
         packet = packet_header + packet_data
 
         # Make multiple attempts to transmit the packet to the gateway
