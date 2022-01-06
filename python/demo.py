@@ -54,14 +54,13 @@ if __name__ == '__main__':
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
 
-    ''''
     # Serial-interface throughput test
     print("Starting serial throughput test")
     for n in range(0, 1000):
         print("Echo Test #"+str(n+1))
         echo_test()
     quit()
-    '''
+
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
 
