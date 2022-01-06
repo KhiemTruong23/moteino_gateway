@@ -339,7 +339,6 @@ class MoteinoGateway(threading.Thread):
                 print("Throwing away malformed packet")
                 continue
 
-
             # Packet-type is the 4th byte in the packet
             packet_type = packet[3]
 
@@ -360,7 +359,6 @@ class MoteinoGateway(threading.Thread):
                 self.event.set()
                 continue
 
-
             # Extract the CRC from the packet
             packet_crc = int.from_bytes(packet[1:3], 'little')
 
@@ -374,7 +372,6 @@ class MoteinoGateway(threading.Thread):
                 packet = BadPacket(packet)
                 print(">>> CRC MISMATCH DETECTED <<<")
 
-            # Decode our raw bytes into a known packet type
             elif packet_type == self.SP_FROM_RADIO:
                 packet = RadioPacket(packet)
 

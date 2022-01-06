@@ -20,7 +20,7 @@ def echo_test():
 
     print("Checking data integrity")
     confirmed = True
-    for n in range(0,count):
+    for n in range(0, count):
         packet = gw.wait_for_message(5)
         expected = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
 
@@ -39,7 +39,6 @@ def echo_test():
             print("Unknown packet type!")
             print("Packet contents:", packet)
             confirmed = False
-
 
     if confirmed:
         print("Data integrity confirmed")
