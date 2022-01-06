@@ -19,15 +19,6 @@ ForkedRFM69_ATC Radio;
 //=========================================================================================================
 // Formats of messages to and from the gateway
 //=========================================================================================================
-struct echo_t
-{
-    uint8_t   packet_len;
-    uint8_t   uart_crc;
-    uint8_t   packet_type;
-    uint8_t   data[0];
-};
-
-
 struct init_radio_t
 {
     uint8_t   packet_len;
