@@ -1,14 +1,32 @@
 import moteinogw
 from timeit import default_timer as timer
 
+# ==========================================================================================================
+# echo_test() - Transmits / receives a large number of packets across the serial interface
+#
+# Measures the round-trip time, then examines each queued up packet to ensure that it matches
+# the original packet that was sent
+# ==========================================================================================================
 def echo_test():
+    count = 10000
     print("Start test")
     start = timer()
-    for n in range(0, 1000):
-        gw.echo(b'abcdefgddddddddddddddddddddhijk')
+    for n in range(0, count):
+        packet = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
+        gw.echo(packet)
     end = timer()
-    print("It took", end - start)
+    print("Round trip for", count, "packets took", end - start, "seconds")
+
+    print("Checking data integrity")
+    for n in range(0,count):
+        packet = gw.wait_for_message(5)
+        expected = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
+        if not packet.payload == expected:
+            print("Fault on packet", n)
+            quit()
+    print("Data integrity confirmed")
     quit()
+# ==========================================================================================================
 
 
 if __name__ == '__main__':

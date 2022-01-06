@@ -54,6 +54,17 @@ class RadioPacket:
 
 
 # ==========================================================================================================
+# EchoPacket() - Contains the payload of an SP_ECHO packet
+# ==========================================================================================================
+class EchoPacket:
+    def __init__(self, raw_packet):
+        self.payload = raw_packet[3:]
+# ==========================================================================================================
+
+
+
+
+# ==========================================================================================================
 # MoteinoGateway - Manages communications with the Moteino gateway driving an RFM69 radio
 # ==========================================================================================================
 class MoteinoGateway(threading.Thread):
@@ -322,9 +333,11 @@ class MoteinoGateway(threading.Thread):
                 self.event.set()
                 continue
 
-            # If this is a radio packet, decode it
+            # Decode our raw bytes into a known packet type
             if packet_type == self.SP_FROM_RADIO:
                 packet = RadioPacket(packet)
+            elif packet_type == self.SP_ECHO:
+                packet = EchoPacket(packet)
 
             # Place this packet into our queue
             self.mutex.acquire()
