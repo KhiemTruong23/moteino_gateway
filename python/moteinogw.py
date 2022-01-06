@@ -144,8 +144,8 @@ class MoteinoGateway(threading.Thread):
     # ------------------------------------------------------------------------------
     # echo() - Ask the gateway to echo a message back to us
     # ------------------------------------------------------------------------------
-    def echo(self, packet_data):
-        self.send_packet(self.SP_ECHO, packet_data)
+    def echo(self, payload):
+        return self.send_packet(self.SP_ECHO, payload)
     # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
@@ -159,7 +159,7 @@ class MoteinoGateway(threading.Thread):
         packet = frequency.to_bytes(2, 'little')
         packet = packet + node_id.to_bytes(2, 'little')
         packet = packet + network_id.to_bytes(1, 'little')
-        self.send_packet(self.SP_INIT_RADIO, packet)
+        return self.send_packet(self.SP_INIT_RADIO, packet)
     # ------------------------------------------------------------------------------
 
 
@@ -169,18 +169,20 @@ class MoteinoGateway(threading.Thread):
     # The key must be exactly 16 bytes long
     # ------------------------------------------------------------------------------
     def set_encryption_key(self, key):
-        self.send_packet(self.SP_ENCRYPT_KEY, key)
+        return self.send_packet(self.SP_ENCRYPT_KEY, key)
     # ------------------------------------------------------------------------------
 
 
     # ------------------------------------------------------------------------------
     # send_radio_packet() - Sends a data-packet to a node via the radio
+    #
+    # Returns: True on success, otherwise false
     # ------------------------------------------------------------------------------
     def send_radio_packet(self, node_id, data):
         packet = node_id.to_bytes(2, 'little')
         packet = packet + len(data).to_bytes(1, 'little')
         packet = packet + data
-        self.send_packet(self.SP_TO_RADIO, packet)
+        return self.send_packet(self.SP_TO_RADIO, packet)
     # ------------------------------------------------------------------------------
 
 
@@ -195,16 +197,16 @@ class MoteinoGateway(threading.Thread):
     # send_packet() - Sends a generic packet expressed as bytes and waits for
     #                 the gateway to send the acknowledgement
     # ------------------------------------------------------------------------------
-    def send_packet(self, packet_type, packet_payload):
+    def send_packet(self, packet_type, payload):
 
         # Prepend the packet type to the packet data
-        packet = packet_type.to_bytes(1, 'little') + packet_payload
+        packet = packet_type.to_bytes(1, 'little') + payload
 
         # Compute the CRC of the packet data (including the packet type)
-        crc = fast_crc8(packet)
+        crc = fast_crc8(packet).to_bytes(1, 'little')
 
         # Prepend the CRC to the packet
-        packet = crc.to_bytes(1, 'little') + packet
+        packet = crc + packet
 
         # The total length of the packet includes the length byte
         packet_length = len(packet) + 1

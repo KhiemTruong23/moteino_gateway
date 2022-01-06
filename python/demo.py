@@ -1,5 +1,15 @@
 import moteinogw
-import time
+from timeit import default_timer as timer
+
+def echo_test():
+    print("Start test")
+    start = timer()
+    for n in range(0, 1000):
+        gw.echo(b'abcdefgddddddddddddddddddddhijk')
+    end = timer()
+    print("It took", end - start)
+    quit()
+
 
 if __name__ == '__main__':
     gw = moteinogw.MoteinoGateway()
@@ -7,6 +17,9 @@ if __name__ == '__main__':
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
+
+    # Serial-interface throughput test
+    echo_test()
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
@@ -22,7 +35,9 @@ if __name__ == '__main__':
     while False:
         counter = counter + 1;
         message = "Hello %i" % (counter)
-        gw.echo(bytes(message, 'utf-8'))
+        if not gw.echo(bytes(message, 'utf-8')):
+            print("ECHO FAILED")
+            quit()
 
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     while True:
@@ -35,4 +50,11 @@ if __name__ == '__main__':
                 response_id = response_id + 1
                 response = 'I see you %i' % (response_id)
                 gw.send_radio_packet(packet.src_node, bytes(response, 'utf-8'))
+            continue
+
+        if packet[2] == gw.SP_ECHO:
+            print("Echo", packet)
+            continue
+
+
 

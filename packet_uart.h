@@ -8,7 +8,7 @@ enum
 {
     SP_PRINT       = 0x01,  // To client
     SP_READY       = 0x02,  // To client
-    SP_ECHO        = 0x03,  // From client
+    SP_ECHO        = 0x03,  // To and From client
     SP_ALIVE       = 0x04,  // To client
     SP_INIT_RADIO  = 0x05,  // From client
     SP_ENCRYPT_KEY = 0x06,  // From client

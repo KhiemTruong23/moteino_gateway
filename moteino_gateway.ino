@@ -79,17 +79,10 @@ void setup()
 //=========================================================================================================
 
 //=========================================================================================================
-// handle_echo() - Echos back data as an SP_PRINT command
+// handle_echo() - Echos back data to the client
 //=========================================================================================================
 void handle_echo(const unsigned char* raw)
 {
-    // Map our structure on top of the raw packet
-    map_struct(echo_t, msg);
-
-    // Replace the SP_ECHO with an SP_PRINT
-    msg.packet_type = SP_PRINT;
-
-    // And send the packet to the client
     UART.transmit_raw(raw);
 }
 //=========================================================================================================
@@ -199,9 +192,6 @@ void dispatch_serial_message(const unsigned char* packet)
             UART.printf("Recvd unknown packet type %i", packet_type);
             break;
     }
-    
-    // Tell the backhaul that we processed his command
-    UART.acknowledge_handled_packet();
 }
 //=========================================================================================================
 
@@ -236,6 +226,7 @@ void loop()
     if (UART.is_message_waiting(&msg))
     {
         dispatch_serial_message(msg);
+        UART.acknowledge_handled_packet();
     }
 
     if (is_radio_initialized && Radio.receiveDone())
