@@ -72,9 +72,6 @@ crc16_table = [
 ]
 # ==========================================================================================================
 
-
-
-
 # ==========================================================================================================
 # fast_crc16() - Computes the 16-bit CRC of a byte string
 # ==========================================================================================================
@@ -85,10 +82,6 @@ def fast_crc16(data):
         crc = ((crc << 8) ^ crc16_table[pos]) & 0xFFFF
     return crc
 # ==========================================================================================================
-
-
-
-
 
 # ==========================================================================================================
 # MoteinoGateway - Manages communications with the Moteino gateway driving an RFM69 radio
@@ -134,7 +127,6 @@ class MoteinoGateway(threading.Thread):
 
     # ------------------------------------------------------------------------------
 
-
     # ------------------------------------------------------------------------------
     # startup() - Begins the process of monitoring the gateway
     # ------------------------------------------------------------------------------
@@ -154,7 +146,6 @@ class MoteinoGateway(threading.Thread):
         # Accept a connection from the other thread
         self.pipe_in, _ = sock.accept()
     # ------------------------------------------------------------------------------
-
 
     # ------------------------------------------------------------------------------
     # wait_for_message() - Blocks, waiting for an incoming packet.  Returns
@@ -177,7 +168,6 @@ class MoteinoGateway(threading.Thread):
         return packet
     # ------------------------------------------------------------------------------
 
-
     # ------------------------------------------------------------------------------
     # echo() - Ask the gateway to echo a message back to us
     # ------------------------------------------------------------------------------
@@ -199,7 +189,6 @@ class MoteinoGateway(threading.Thread):
         return self.send_packet(self.SP_INIT_RADIO, packet)
     # ------------------------------------------------------------------------------
 
-
     # ------------------------------------------------------------------------------
     # set_encryption_key() - Tells the radio what the network encryption key is
     #
@@ -208,7 +197,6 @@ class MoteinoGateway(threading.Thread):
     def set_encryption_key(self, key):
         return self.send_packet(self.SP_ENCRYPT_KEY, key)
     # ------------------------------------------------------------------------------
-
 
     # ------------------------------------------------------------------------------
     # send_radio_packet() - Sends a data-packet to a node via the radio
@@ -222,13 +210,11 @@ class MoteinoGateway(threading.Thread):
         return self.send_packet(self.SP_TO_RADIO, packet)
     # ------------------------------------------------------------------------------
 
-
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     # From here on down are methods that are private to this class
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
     # <><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>
-
 
     # ------------------------------------------------------------------------------
     # send_packet() - Sends a generic packet expressed as bytes and waits for
@@ -277,8 +263,6 @@ class MoteinoGateway(threading.Thread):
         return False
     # ------------------------------------------------------------------------------
 
-
-
     # ------------------------------------------------------------------------------
     # send_and_wait() - Sends data and waits for an ACK or NAK
     #
@@ -290,8 +274,6 @@ class MoteinoGateway(threading.Thread):
         self.comport.write(data)
         return self.event.wait(timeout) and self.packet_ack
     # ------------------------------------------------------------------------------
-
-
 
     # ---------------------------------------------------------------------------
     # launch_serial_reader_thread() - Starts the thread that does a blocking
@@ -311,7 +293,6 @@ class MoteinoGateway(threading.Thread):
         # This launches the "self.run()" routine in it's own thread
         self.start()
     # ---------------------------------------------------------------------------
-
 
     # ---------------------------------------------------------------------------
     # run() - A blocking thread that permanently waits for incoming messages
@@ -365,9 +346,9 @@ class MoteinoGateway(threading.Thread):
             # Compute a new CRC for the packet
             new_crc = fast_crc16(packet[3:])
 
-            #--------------------------------------------------------
+            # --------------------------------------------------------
             # Convert the packet to specialized packet class
-            #--------------------------------------------------------
+            # --------------------------------------------------------
             if packet_crc != new_crc:
                 packet = BadPacket(packet)
                 print(">>> CRC MISMATCH DETECTED <<<")
@@ -377,8 +358,7 @@ class MoteinoGateway(threading.Thread):
 
             elif packet_type == self.SP_ECHO:
                 packet = EchoPacket(packet)
-            #--------------------------------------------------------
-
+            # --------------------------------------------------------
 
             # Place this packet into our queue
             self.mutex.acquire()
