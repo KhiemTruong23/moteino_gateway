@@ -10,6 +10,7 @@
 
 uint16_t fast_crc16(const uint8_t* in, uint8_t count);
 const int PACKET_HEADER_SIZE = sizeof(packet_header_t);
+const int CRC_START = 3;
 
 //=========================================================================================================
 // DEVICE_TYPE: 0 = AVR1284p-SerialPort0.  1 = AVR1284p-SerialPort1   2 = AVR328p
@@ -73,11 +74,12 @@ enum rx_state_t
 //=========================================================================================================
 // The incoming serial buffer
 //=========================================================================================================
-static volatile unsigned char  rx_buffer[256];
-static volatile unsigned char* rx_ptr;
-static volatile unsigned char  rx_count;
-static volatile unsigned long  rx_start;
-static          rx_state_t     rx_state;
+static volatile unsigned char    rx_buffer[256];
+static volatile unsigned char*   rx_ptr;
+static volatile unsigned char    rx_count;
+static volatile unsigned long    rx_start;
+static          rx_state_t       rx_state;
+static volatile packet_header_t& rx_packet = *(packet_header_t*)rx_buffer;
 //=========================================================================================================
 
 
@@ -117,8 +119,14 @@ void CPacketUART::transmit(const void* vp)
     // Transmute our pointer into a byte pointer
     const unsigned char* s = (const unsigned char*)(vp);
 
+    // And map a packet-header over data buffer
+    packet_header_t& packet_header = *(packet_header_t*)vp;
+
     // Fetch the number of bytes we need to transmit
-    unsigned char len = s[0];
+    unsigned char len = packet_header.packet_len;
+
+    // Stamp a CRC into the packet
+    packet_header.uart_crc = fast_crc16(s + CRC_START, len - CRC_START);
 
     // So long as we have characters left to output...
     while (len--)
@@ -314,14 +322,11 @@ bool CPacketUART::rx_state_machine()
     // If we get here, we have a complete packet!
     //-----------------------------------------------------------------------------------
 
-    // Extract the packet CRC that the client computed
-    uint8_t old_crc = rx_buffer[1];
-
     // Compute our own CRC of the packet
-    uint8_t new_crc = fast_crc16(rx_buffer+3, rx_count-3);
+    uint16_t new_crc = fast_crc16(rx_buffer + CRC_START, rx_count - CRC_START);
     
     // If the CRC's don't match, reject this packet
-    if (old_crc != new_crc)
+    if (rx_packet.uart_crc != new_crc)
     {
         make_ready_to_receive();
         transmit(NAK);

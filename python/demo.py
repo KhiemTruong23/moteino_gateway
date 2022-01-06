@@ -19,6 +19,7 @@ def echo_test():
     print("Round trip for", count, "packets took", end - start, "seconds")
 
     print("Checking data integrity")
+    confirmed = True
     for n in range(0,count):
         packet = gw.wait_for_message(5)
         expected = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
@@ -26,8 +27,12 @@ def echo_test():
             print("Fault on packet", n)
             print("Expected: ", expected)
             print("Received: ", packet.payload)
-            quit()
-    print("Data integrity confirmed")
+            confirmed = False
+
+    if confirmed:
+        print("Data integrity confirmed")
+    else:
+        print("Data corruption detected!")
 # ==========================================================================================================
 
 
