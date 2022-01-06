@@ -37,7 +37,7 @@ public:
     void    indicate_alive();
 
     // Send a raw packet to the client
-    void    transmit_raw(const void* vp);
+    void    transmit(const void* vp);
 
 protected:
 

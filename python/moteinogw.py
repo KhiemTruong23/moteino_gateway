@@ -223,7 +223,7 @@ class MoteinoGateway(threading.Thread):
         packet_length = len(packet) + 1
 
         # Make multiple attempts to transmit the prologue + packet
-        for attempt in range(0, 5):
+        for attempt in range(0, 10):
             if not self.send_prologue(packet_length):
                 break
             if self.send_and_wait(packet, 5):
@@ -243,7 +243,7 @@ class MoteinoGateway(threading.Thread):
         prologue = bytes([length, ~length & 0xFF])
 
         # Make multiple attempts to send the prologue
-        for attempt in range(0,5):
+        for attempt in range(0,10):
             if self.send_and_wait(prologue, 1):
                 return True
 

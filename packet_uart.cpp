@@ -111,7 +111,7 @@ ISR(xUSART_RX_vect)
 //=========================================================================================================
 // transmit() - Transmits a string of bytes to the client side
 //=========================================================================================================
-void CPacketUART::transmit_raw(const void* vp)
+void CPacketUART::transmit(const void* vp)
 {
     // Transmute our pointer into a byte pointer
     const unsigned char* s = (const unsigned char*)(vp);
@@ -188,7 +188,7 @@ void CPacketUART::printf(const char* format, ...)
     buffer[0] = len + 3;
     buffer[1] = 0;
     buffer[2] = SP_PRINT;
-    transmit_raw(buffer);
+    transmit(buffer);
 }
 //=========================================================================================================
 
@@ -198,7 +198,7 @@ void CPacketUART::printf(const char* format, ...)
 void CPacketUART::indicate_alive()
 {
     unsigned char packet[] = {3, 0, SP_ALIVE};
-    transmit_raw(packet);
+    transmit(packet);
 }
 //=========================================================================================================
 
@@ -243,7 +243,7 @@ bool CPacketUART::rx_state_machine()
         if (elapsed > 20)
         {
             make_ready_to_receive();
-            transmit_raw(NAK);
+            transmit(NAK);
         }
 
         // Indicate that no packet has yet arrived
@@ -261,7 +261,7 @@ bool CPacketUART::rx_state_machine()
             --rx_count;
 
             // Tell the client side he may continue sending
-            transmit_raw(ACK);
+            transmit(ACK);
 
             // Now we're waiting for the rest of the packet to arrive
             rx_state = WAIT_PACKET_COMPLETE;
@@ -271,7 +271,7 @@ bool CPacketUART::rx_state_machine()
         else
         {
             make_ready_to_receive();
-            transmit_raw(NAK);
+            transmit(NAK);
         }
 
         // We don't have a packet waiting
@@ -296,7 +296,7 @@ bool CPacketUART::rx_state_machine()
         if (elapsed > 20)
         {
             make_ready_to_receive();
-            transmit_raw(NAK);
+            transmit(NAK);
         }
 
         // We don't yet have a complete packet
@@ -317,7 +317,7 @@ bool CPacketUART::rx_state_machine()
     if (old_crc != new_crc)
     {
         make_ready_to_receive();
-        transmit_raw(NAK);
+        transmit(NAK);
         return false;
     }
 
@@ -332,7 +332,6 @@ bool CPacketUART::rx_state_machine()
 //=========================================================================================================
 bool CPacketUART::is_message_waiting(unsigned char** p)
 {
-
     // Hand the caller a pointer to the message buffer
     if (p) *p = rx_buffer;
 
@@ -366,6 +365,6 @@ void CPacketUART::make_ready_to_receive()
 void CPacketUART::acknowledge_handled_packet()
 {
     make_ready_to_receive();
-    transmit_raw(ACK);
+    transmit(ACK);
 }
 //=========================================================================================================

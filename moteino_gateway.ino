@@ -83,7 +83,7 @@ void setup()
 //=========================================================================================================
 void handle_echo(const unsigned char* raw)
 {
-    UART.transmit_raw(raw);
+    UART.transmit(raw);
 }
 //=========================================================================================================
 
@@ -211,7 +211,7 @@ void handle_incoming_radio_packet()
     packet.dst_node    = Radio.TARGETID;
     packet.data_len    = Radio.DATALEN;
     memcpy(packet.data,  Radio.DATA, packet.data_len);
-    UART.transmit_raw(raw);
+    UART.transmit(raw);
 }
 //=========================================================================================================
 
