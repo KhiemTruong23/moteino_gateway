@@ -69,16 +69,6 @@ if __name__ == '__main__':
     gw.set_encryption_key(b'1234123412341234')
 
     print("Initialized!")
-    counter = 0
-    response_id = 0
-
-    # Change this to "while True:" to bombard the serial interface with messages
-    while False:
-        counter = counter + 1;
-        message = "Hello %i" % (counter)
-        if not gw.echo(bytes(message, 'utf-8')):
-            print("ECHO FAILED")
-            quit()
 
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     while True:
@@ -91,5 +81,4 @@ if __name__ == '__main__':
                 response_id = response_id + 1
                 response = 'I see you %i' % (response_id)
                 gw.send_radio_packet(packet.src_node, bytes(response, 'utf-8'))
-
 
