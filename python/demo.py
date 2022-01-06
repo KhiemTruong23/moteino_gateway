@@ -24,6 +24,8 @@ def echo_test():
         expected = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
         if not packet.payload == expected:
             print("Fault on packet", n)
+            print("Expected: ", expected)
+            print("Received: ", packet.payload)
             quit()
     print("Data integrity confirmed")
 # ==========================================================================================================
