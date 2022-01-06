@@ -23,11 +23,23 @@ def echo_test():
     for n in range(0,count):
         packet = gw.wait_for_message(5)
         expected = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
-        if not packet.payload == expected:
-            print("Fault on packet", n)
+
+        if isinstance(packet, moteinogw.EchoPacket):
+            if packet.payload != expected:
+                print("Fault on packet", n)
+                print("Expected: ", expected)
+                print("Received: ", packet.payload)
+                confirmed = False
+        elif isinstance(packet, moteinogw.BadPacket):
+            print("CRC Mismatch on packet", n)
             print("Expected: ", expected)
             print("Received: ", packet.payload)
             confirmed = False
+        else:
+            print("Unknown packet type!")
+            print("Packet contents:", packet)
+            confirmed = False
+
 
     if confirmed:
         print("Data integrity confirmed")
@@ -42,6 +54,7 @@ if __name__ == '__main__':
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
+
 
     # Serial-interface throughput test
     print("Starting serial throughput test")

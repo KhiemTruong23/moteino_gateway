@@ -5,6 +5,35 @@ import collections
 import select
 
 # ==========================================================================================================
+# RadioPacket - Decodes an incoming radio packet
+# ==========================================================================================================
+class RadioPacket:
+
+    def __init__(self, raw_packet):
+        self.src_node = int.from_bytes(raw_packet[4:6], 'little')
+        self.dst_node = int.from_bytes(raw_packet[6:8], 'little')
+        datalen = int.from_bytes(raw_packet[8:9], 'little')
+        self.data = raw_packet[9:9+datalen]
+# ==========================================================================================================
+
+# ==========================================================================================================
+# EchoPacket - Contains the payload of an SP_ECHO packet
+# ==========================================================================================================
+class EchoPacket:
+    def __init__(self, raw_packet):
+        self.payload = raw_packet[4:]
+# ==========================================================================================================
+
+# ==========================================================================================================
+# BadPacket - Indicates a packet that was thrown away due to bad CRC
+# ==========================================================================================================
+class BadPacket:
+    def __init__(self, raw_packet):
+        self.raw_packet = raw_packet
+# ==========================================================================================================
+
+
+# ==========================================================================================================
 # 8-bit CRC lookup table for polynomial 0x31
 # ==========================================================================================================
 crc16_table = [
@@ -57,28 +86,6 @@ def fast_crc16(data):
     return crc
 # ==========================================================================================================
 
-
-
-# ==========================================================================================================
-# RadioPacket() - Decodes an incoming radio packet
-# ==========================================================================================================
-class RadioPacket:
-
-    def __init__(self, raw_packet):
-        self.src_node = int.from_bytes(raw_packet[4:6], 'little')
-        self.dst_node = int.from_bytes(raw_packet[6:8], 'little')
-        datalen = int.from_bytes(raw_packet[8:9], 'little')
-        self.data = raw_packet[9:9+datalen]
-# ==========================================================================================================
-
-
-# ==========================================================================================================
-# EchoPacket() - Contains the payload of an SP_ECHO packet
-# ==========================================================================================================
-class EchoPacket:
-    def __init__(self, raw_packet):
-        self.payload = raw_packet[4:]
-# ==========================================================================================================
 
 
 
@@ -332,6 +339,7 @@ class MoteinoGateway(threading.Thread):
                 print("Throwing away malformed packet")
                 continue
 
+
             # Packet-type is the 4th byte in the packet
             packet_type = packet[3]
 
@@ -352,11 +360,28 @@ class MoteinoGateway(threading.Thread):
                 self.event.set()
                 continue
 
+
+            # Extract the CRC from the packet
+            packet_crc = int.from_bytes(packet[1:3], 'little')
+
+            # Compute a new CRC for the packet
+            new_crc = fast_crc16(packet[3:])
+
+            #--------------------------------------------------------
+            # Convert the packet to specialized packet class
+            #--------------------------------------------------------
+            if packet_crc != new_crc:
+                packet = BadPacket(packet)
+                print(">>> CRC MISMATCH DETECTED <<<")
+
             # Decode our raw bytes into a known packet type
-            if packet_type == self.SP_FROM_RADIO:
+            elif packet_type == self.SP_FROM_RADIO:
                 packet = RadioPacket(packet)
+
             elif packet_type == self.SP_ECHO:
                 packet = EchoPacket(packet)
+            #--------------------------------------------------------
+
 
             # Place this packet into our queue
             self.mutex.acquire()
