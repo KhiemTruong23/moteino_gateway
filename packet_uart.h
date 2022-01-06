@@ -17,6 +17,15 @@ enum
     SP_NAK         = 0x09   // To client
 };
 
+
+struct packet_header_t
+{
+    uint8_t   packet_len;
+    uint16_t  uart_crc;
+    uint8_t   packet_type;
+};
+
+
 class CPacketUART
 {
 public:
@@ -46,6 +55,9 @@ protected:
 
     // This places the rx machinery ready to receive an incoming packet
     void    make_ready_to_receive();
+
+    // A wrapper for "transmit(void*)"
+    void    transmit(const packet_header_t& packet);
 
 };
 

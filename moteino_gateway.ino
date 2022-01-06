@@ -17,12 +17,6 @@ ForkedRFM69_ATC Radio;
 //=========================================================================================================
 // Formats of messages to and from the gateway
 //=========================================================================================================
-struct header_t
-{
-    uint8_t   packet_len;
-    uint16_t  uart_crc;
-    uint8_t   packet_type;
-};
 
 struct init_radio_t
 {
@@ -162,7 +156,7 @@ void handle_to_radio(const unsigned char* raw)
 void dispatch_serial_message(const unsigned char* raw)
 {
     // Map a structure over the top of the raw packet
-    map_struct(header_t, packet);
+    map_struct(packet_header_t, packet);
 
     switch(packet.packet_type)
     {

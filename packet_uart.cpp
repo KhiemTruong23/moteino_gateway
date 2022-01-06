@@ -9,6 +9,7 @@
 #include "packet_uart.h"
 
 uint16_t fast_crc16(const uint8_t* in, uint8_t count);
+const int PACKET_HEADER_SIZE = sizeof(packet_header_t);
 
 //=========================================================================================================
 // DEVICE_TYPE: 0 = AVR1284p-SerialPort0.  1 = AVR1284p-SerialPort1   2 = AVR328p
@@ -72,19 +73,19 @@ enum rx_state_t
 //=========================================================================================================
 // The incoming serial buffer
 //=========================================================================================================
-static volatile unsigned char rx_buffer[256];
+static volatile unsigned char  rx_buffer[256];
 static volatile unsigned char* rx_ptr;
-static volatile unsigned char rx_count;
-static volatile unsigned long rx_start;
-static          rx_state_t    rx_state;
+static volatile unsigned char  rx_count;
+static volatile unsigned long  rx_start;
+static          rx_state_t     rx_state;
 //=========================================================================================================
 
 
 //=========================================================================================================
 // These messages are used to ACK or NAK the receipt of a prologue or a packet
 //=========================================================================================================
-static const unsigned char ACK[] = {3, 0, SP_READY};
-static const unsigned char NAK[] = {3, 0, SP_NAK};
+static const packet_header_t ACK = {PACKET_HEADER_SIZE, 0, SP_READY};
+static const packet_header_t NAK = {PACKET_HEADER_SIZE, 0, SP_NAK};
 //=========================================================================================================
 
 
@@ -129,6 +130,8 @@ void CPacketUART::transmit(const void* vp)
         xUDR = *s++;
     }
 }
+
+void CPacketUART::transmit(const packet_header_t& ph) {transmit(&ph);}
 //=========================================================================================================
 
 
@@ -178,16 +181,20 @@ void CPacketUART::begin(uint32_t baud)
 //=========================================================================================================
 void CPacketUART::printf(const char* format, ...)
 {
-    unsigned char buffer[256];
     va_list va;
 
+    unsigned char buffer[256];
+ 
+    // Map a packet header over the buffer
+    packet_header_t& packet_header = *(packet_header_t*)buffer;
+
     va_start(va, format);
-    int len = vsprintf(buffer+3, format, va);
+    int payload_length = vsprintf(buffer + sizeof(packet_header), format, va);
     va_end(va);
 
-    buffer[0] = len + 3;
-    buffer[1] = 0;
-    buffer[2] = SP_PRINT;
+    packet_header.packet_len  = payload_length + sizeof(packet_header);
+    packet_header.uart_crc    = 0;
+    packet_header.packet_type = SP_PRINT;
     transmit(buffer);
 }
 //=========================================================================================================
@@ -197,7 +204,7 @@ void CPacketUART::printf(const char* format, ...)
 //=========================================================================================================
 void CPacketUART::indicate_alive()
 {
-    unsigned char packet[] = {3, 0, SP_ALIVE};
+    const packet_header_t packet = {PACKET_HEADER_SIZE, 0, SP_ALIVE};
     transmit(packet);
 }
 //=========================================================================================================
@@ -311,7 +318,7 @@ bool CPacketUART::rx_state_machine()
     uint8_t old_crc = rx_buffer[1];
 
     // Compute our own CRC of the packet
-    uint8_t new_crc = fast_crc16(rx_buffer+2, rx_count - 2);
+    uint8_t new_crc = fast_crc16(rx_buffer+3, rx_count-3);
     
     // If the CRC's don't match, reject this packet
     if (old_crc != new_crc)
