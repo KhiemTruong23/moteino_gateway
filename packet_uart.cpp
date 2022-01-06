@@ -205,6 +205,19 @@ void CPacketUART::indicate_alive()
 
 //=========================================================================================================
 // rx_state_machine() - Runs the state machine that manages the reliable receipt of serial packets
+//
+// Each incoming data packet is preceded by a two-byte prologue.  This prologue contains the length
+// byte and the two's-complement of the length-byte.  After receipt of a properly formatted prologue
+// an ACK is sent, and the client then sends the remainder of the packet.
+//
+// A prologue is rejected (with a NAK) in any of these cases:
+//     A 2nd incoming byte is not seen within 20 milliseconds of the receipt of the 1st byte
+//     The 1st byte is not the two's complement of the 2nd byte
+//
+// A packet is rejected (with a NAK) in any of these cases:
+//     The entire packet has not been received within 20 milliseconds of receipt of the 1st byte
+//     The packet CRC is wrong, indicating the packet is corrupt
+//
 //=========================================================================================================
 bool CPacketUART::rx_state_machine()
 {

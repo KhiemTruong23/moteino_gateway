@@ -37,7 +37,7 @@ if __name__ == '__main__':
     packet = gw.wait_for_message()
 
     # Serial-interface throughput test
-    echo_test()
+    #echo_test()
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
@@ -68,11 +68,5 @@ if __name__ == '__main__':
                 response_id = response_id + 1
                 response = 'I see you %i' % (response_id)
                 gw.send_radio_packet(packet.src_node, bytes(response, 'utf-8'))
-            continue
-
-        if packet[2] == gw.SP_ECHO:
-            print("Echo", packet)
-            continue
-
 
 
