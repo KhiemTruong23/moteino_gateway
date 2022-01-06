@@ -10,13 +10,19 @@ import struct
 # ==========================================================================================================
 class RadioPacket:
 
-    # 4-byte header, 2-byte src_mode, 2-byte dst_node, data
+    src_node = None
+    dst_node = None
+    rssi     = None
+    data     = None
+
+    # 4-byte header, 2-byte src_mode, 2-byte dst_node, 2-byte rssi, data
     def __init__(self, raw_packet):
-        format = '<4sHH'
+        format = '<4sHHh'
         fixed_size = struct.calcsize(format)
-        _, self.src_node, self.dst_node = struct.unpack(format, raw_packet[:fixed_size])
+        _, self.src_node, self.dst_node, self.rssi = struct.unpack(format, raw_packet[:fixed_size])
         self.data = raw_packet[fixed_size:]
 # ==========================================================================================================
+
 
 # ==========================================================================================================
 # EchoPacket - Contains the payload of an SP_ECHO packet
@@ -185,9 +191,7 @@ class MoteinoGateway(threading.Thread):
     #         network_id = Between 0 and 255
     # ------------------------------------------------------------------------------
     def init_radio(self, frequency, node_id, network_id):
-        packet = frequency.to_bytes(2, 'little')
-        packet = packet + node_id.to_bytes(2, 'little')
-        packet = packet + network_id.to_bytes(1, 'little')
+        packet = struct.pack('<HHB', frequency, node_id, network_id)
         return self.send_packet(self.SP_INIT_RADIO, packet)
     # ------------------------------------------------------------------------------
 
