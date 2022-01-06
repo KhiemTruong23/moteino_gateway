@@ -236,7 +236,7 @@ bool CPacketUART::rx_state_machine()
     // If we're waiting for the 2nd prologue byte to arrive and it hasn't...
     if (rx_state == WAIT_PROLOGUE_2 && rx_count == 1)
     {
-        // How long have we been waiting the arrival of the second?
+        // How long have we been waiting the arrival of the second prologue byte?
         elapsed = millis() - rx_start;
             
         // If the 2nd prologue byte is overdue, send the client a NAK

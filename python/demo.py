@@ -8,12 +8,14 @@ from timeit import default_timer as timer
 # the original packet that was sent
 # ==========================================================================================================
 def echo_test():
-    count = 10000
+    count = 1000
     print("Start test")
     start = timer()
     for n in range(0, count):
         packet = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
-        gw.echo(packet)
+        if not gw.echo(packet):
+            print("Failed to transmit packet", n)
+            quit()
     end = timer()
     print("Round trip for", count, "packets took", end - start, "seconds")
 
@@ -25,7 +27,6 @@ def echo_test():
             print("Fault on packet", n)
             quit()
     print("Data integrity confirmed")
-    quit()
 # ==========================================================================================================
 
 
@@ -37,7 +38,9 @@ if __name__ == '__main__':
     packet = gw.wait_for_message()
 
     # Serial-interface throughput test
-    #echo_test()
+    for n in range(0, 1000):
+        echo_test()
+    quit()
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
