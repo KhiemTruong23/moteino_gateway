@@ -3,17 +3,19 @@ import threading
 import socket
 import collections
 import select
+import struct
 
 # ==========================================================================================================
 # RadioPacket - Decodes an incoming radio packet
 # ==========================================================================================================
 class RadioPacket:
 
+    # 4-byte header, 2-byte src_mode, 2-byte dst_node, data
     def __init__(self, raw_packet):
-        self.src_node = int.from_bytes(raw_packet[4:6], 'little')
-        self.dst_node = int.from_bytes(raw_packet[6:8], 'little')
-        datalen = int.from_bytes(raw_packet[8:9], 'little')
-        self.data = raw_packet[9:9+datalen]
+        format = '<4sHH'
+        fixed_size = struct.calcsize(format)
+        _, self.src_node, self.dst_node = struct.unpack(format, raw_packet[:fixed_size])
+        self.data = raw_packet[fixed_size:]
 # ==========================================================================================================
 
 # ==========================================================================================================

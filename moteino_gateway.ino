@@ -43,7 +43,6 @@ struct from_radio_t
     uint8_t  packet_type;
     uint16_t src_node;
     uint16_t dst_node;    
-    uint8_t  data_len;
     uint8_t  data[0];
 };
 
@@ -197,8 +196,7 @@ void handle_incoming_radio_packet()
     packet.packet_type = SP_FROM_RADIO;
     packet.src_node    = Radio.SENDERID;
     packet.dst_node    = Radio.TARGETID;
-    packet.data_len    = Radio.DATALEN;
-    memcpy(packet.data,  Radio.DATA, packet.data_len);
+    memcpy(packet.data,  Radio.DATA, Radio.DATALEN);
     UART.transmit(raw);
 }
 //=========================================================================================================
