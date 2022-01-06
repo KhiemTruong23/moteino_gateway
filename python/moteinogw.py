@@ -205,10 +205,8 @@ class MoteinoGateway(threading.Thread):
     #
     # Returns: True on success, otherwise false
     # ------------------------------------------------------------------------------
-    def send_radio_packet(self, node_id, data):
-        packet = node_id.to_bytes(2, 'little')
-        packet = packet + len(data).to_bytes(1, 'little')
-        packet = packet + data
+    def send_radio_packet(self, node_id, payload):
+        packet = node_id.to_bytes(2, 'little') + payload
         return self.send_packet(self.SP_TO_RADIO, packet)
     # ------------------------------------------------------------------------------
 

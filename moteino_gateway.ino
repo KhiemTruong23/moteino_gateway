@@ -43,7 +43,7 @@ struct from_radio_t
     uint8_t  packet_type;
     uint16_t src_node;
     uint16_t dst_node;    
-    uint8_t  data[0];
+    uint8_t  payload[0];
 };
 
 struct to_radio_t
@@ -52,8 +52,7 @@ struct to_radio_t
     uint16_t uart_crc;
     uint8_t  packet_type;
     uint16_t dst_node;
-    uint8_t  data_len;
-    uint8_t  data[0];
+    uint8_t  payload[0];
 };
 //=========================================================================================================
 
@@ -142,8 +141,11 @@ void handle_to_radio(const unsigned char* raw)
         return;
     }
 
+    // Figure out how many bytes of message data there are
+    uint8_t payload_len = msg.packet_len - sizeof(msg);
+
     // Ask the radio to send this message
-    Radio.send(msg.dst_node, msg.data, msg.data_len);
+    Radio.send(msg.dst_node, msg.payload, payload_len);
 }
 //=========================================================================================================
 
@@ -192,11 +194,11 @@ void handle_incoming_radio_packet()
     unsigned char raw[128];
     map_struct(from_radio_t, packet);
 
-    packet.packet_len  = sizeof(packet) + Radio.DATALEN;
-    packet.packet_type = SP_FROM_RADIO;
-    packet.src_node    = Radio.SENDERID;
-    packet.dst_node    = Radio.TARGETID;
-    memcpy(packet.data,  Radio.DATA, Radio.DATALEN);
+    packet.packet_len  =   sizeof(packet) + Radio.DATALEN;
+    packet.packet_type =   SP_FROM_RADIO;
+    packet.src_node    =   Radio.SENDERID;
+    packet.dst_node    =   Radio.TARGETID;
+    memcpy(packet.payload, Radio.DATA, Radio.DATALEN);
     UART.transmit(raw);
 }
 //=========================================================================================================
