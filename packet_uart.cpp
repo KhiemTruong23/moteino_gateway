@@ -241,7 +241,7 @@ bool CPacketUART::rx_state_machine()
     if (rx_state == WAIT_PROLOGUE_2 && rx_count == 2)
     {
         // If the prologue bytes are complements of each other, we have a good prologue
-        if (rx_buffer[0] == ~rx_buffer[1])
+        if (rx_buffer[0] == (~rx_buffer[1] & 0xFF))
         {
             // Throw away the 2nd prologue byte
             --rx_ptr;

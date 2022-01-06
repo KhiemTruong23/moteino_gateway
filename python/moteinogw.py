@@ -195,54 +195,61 @@ class MoteinoGateway(threading.Thread):
     # send_packet() - Sends a generic packet expressed as bytes and waits for
     #                 the gateway to send the acknowledgement
     # ------------------------------------------------------------------------------
-    def send_packet(self, packet_type, packet_data):
+    def send_packet(self, packet_type, packet_payload):
 
         # Prepend the packet type to the packet data
-        packet_data = packet_type.to_bytes(1, 'little') + packet_data
+        packet = packet_type.to_bytes(1, 'little') + packet_payload
 
         # Compute the CRC of the packet data (including the packet type)
-        crc = fast_crc8(packet_data)
+        crc = fast_crc8(packet)
 
-        # Build the packet
-        packet = crc.to_bytes(1, 'little') + packet_data
+        # Prepend the CRC to the packet
+        packet = crc.to_bytes(1, 'little') + packet
 
         # The total length of the packet includes the length byte
-        packet_length = len(packet_data) + 1
+        packet_length = len(packet) + 1
 
-        # Create the two-byte packet prologue
-        prologue = bytes([packet_length, ~packet_length & 0xFF])
-
-        # Make multiple attempts to transmit the prologue
+        # Make multiple attempts to transmit the prologue + packet
         for attempt in range(0, 5):
-            self.event.clear()
-            self.packet_ack = False
-
-            self.comport.write(prologue)
-            if not self.event.wait(1):
-                print("Timed out while waiting for prolgue ACK")
-                continue
-
-            if self.packet_ack:
+            if not self.send_prologue(packet_length):
                 break
-
-        # If we were unable to get an ACK from the prologue, give up
-        if not self.packet_ack:
-            print("Failed to receive an ACK for packet prologue")
-            return False
-
-        # Make multiple attempts to transmit the packet to the gateway
-        for attempt in range(0, 5):
-            self.event.clear()
-            self.packet_ack = False
-            self.comport.write(packet)
-            if not self.event.wait(5):
-                print("Timed out waiting for serial response!")
-                continue
-            if self.packet_ack:
+            if self.send_and_wait(packet, 5):
                 return True
 
         print("Gave up sending packet!")
         return False
+    # ------------------------------------------------------------------------------
+
+    # ------------------------------------------------------------------------------
+    # send_prologue() - Constructs a 2-byte prologue from a length, and makes
+    #                   multiple attempts to send it to the gateway
+    # ------------------------------------------------------------------------------
+    def send_prologue(self, length):
+
+        # Create the two-byte packet prologue
+        prologue = bytes([length, ~length & 0xFF])
+
+        # Make multiple attempts to send the prologue
+        for attempt in range(0,5):
+            if self.send_and_wait(prologue, 1):
+                return True
+
+        # If we get here, we couldn't send it
+        return False
+    # ------------------------------------------------------------------------------
+
+
+
+    # ------------------------------------------------------------------------------
+    # send_and_wait() - Sends data and waits for an ACK or NAK
+    #
+    # Returns True if an ACK was received, else false
+    # ------------------------------------------------------------------------------
+    def send_and_wait(self, data, timeout):
+        self.event.clear()
+        self.packet_ack = False
+        self.comport.write(data)
+        return self.event.wait(timeout) and self.packet_ack
     # ------------------------------------------------------------------------------
 
 
