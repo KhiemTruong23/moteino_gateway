@@ -8,7 +8,7 @@
 #include <arduino.h>
 #include "packet_uart.h"
 
-uint8_t fast_crc8(const uint8_t* in, uint8_t count);
+uint16_t fast_crc16(const uint8_t* in, uint8_t count);
 
 //=========================================================================================================
 // DEVICE_TYPE: 0 = AVR1284p-SerialPort0.  1 = AVR1284p-SerialPort1   2 = AVR328p
@@ -311,7 +311,7 @@ bool CPacketUART::rx_state_machine()
     uint8_t old_crc = rx_buffer[1];
 
     // Compute our own CRC of the packet
-    uint8_t new_crc = fast_crc8(rx_buffer+2, rx_count - 2);
+    uint8_t new_crc = fast_crc16(rx_buffer+2, rx_count - 2);
     
     // If the CRC's don't match, reject this packet
     if (old_crc != new_crc)

@@ -3,8 +3,6 @@
 #include "forked_RFM69_ATC.h"
 
 
-uint8_t fast_crc8(const uint8_t* in, uint8_t count);
-
 bool            is_radio_initialized = false;
 CPacketUART     UART;
 ForkedRFM69_ATC Radio;
@@ -19,10 +17,17 @@ ForkedRFM69_ATC Radio;
 //=========================================================================================================
 // Formats of messages to and from the gateway
 //=========================================================================================================
+struct header_t
+{
+    uint8_t   packet_len;
+    uint16_t  uart_crc;
+    uint8_t   packet_type;
+};
+
 struct init_radio_t
 {
     uint8_t   packet_len;
-    uint8_t   uart_crc;
+    uint16_t  uart_crc;
     uint8_t   packet_type;
     uint16_t  frequency;
     uint16_t  node_id;
@@ -32,7 +37,7 @@ struct init_radio_t
 struct encrypt_key_t
 {
     uint8_t   packet_len;
-    uint8_t   uart_crc;
+    uint16_t  uart_crc;
     uint8_t   packet_type;
     uint8_t   encryption_key[16];
 };
@@ -40,7 +45,7 @@ struct encrypt_key_t
 struct from_radio_t
 {
     uint8_t  packet_len;
-    uint8_t  uart_crc;
+    uint16_t uart_crc;
     uint8_t  packet_type;
     uint16_t src_node;
     uint16_t dst_node;    
@@ -51,7 +56,7 @@ struct from_radio_t
 struct to_radio_t
 {
     uint8_t  packet_len;
-    uint8_t  uart_crc;
+    uint16_t uart_crc;
     uint8_t  packet_type;
     uint16_t dst_node;
     uint8_t  data_len;
@@ -154,33 +159,31 @@ void handle_to_radio(const unsigned char* raw)
 //=========================================================================================================
 // dispatch_serial_message() - Processes messages from the serial port
 //=========================================================================================================
-void dispatch_serial_message(const unsigned char* packet)
+void dispatch_serial_message(const unsigned char* raw)
 {
-    unsigned char packet_len  = packet[0];
-    unsigned char packet_crc  = packet[1];
-    unsigned char packet_type = packet[2];
-    unsigned char* msg = packet + 3;
+    // Map a structure over the top of the raw packet
+    map_struct(header_t, packet);
 
-    switch(packet_type)
+    switch(packet.packet_type)
     {
         case SP_ECHO:
-            handle_echo(packet);
+            handle_echo(raw);
             break;
 
         case SP_INIT_RADIO:
-            handle_init_radio(packet);
+            handle_init_radio(raw);
             break;
         
         case SP_ENCRYPT_KEY:
-            handle_encrypt_key(packet);
+            handle_encrypt_key(raw);
             break;
 
         case SP_TO_RADIO:
-            handle_to_radio(packet);
+            handle_to_radio(raw);
             break;
 
         default:
-            UART.printf("Recvd unknown packet type %i", packet_type);
+            UART.printf("Recvd unknown packet type %i", packet.packet_type);
             break;
     }
 }
