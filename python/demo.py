@@ -9,7 +9,6 @@ from timeit import default_timer as timer
 # ==========================================================================================================
 def echo_test():
     count = 1000
-    print("Start test")
     start = timer()
     for n in range(0, count):
         packet = n.to_bytes(4, 'big') + b'abcdefghijklmnopqrstuvwxyz'
@@ -38,7 +37,9 @@ if __name__ == '__main__':
     packet = gw.wait_for_message()
 
     # Serial-interface throughput test
+    print("Starting serial throughput test")
     for n in range(0, 1000):
+        print("Echo Test #"+str(n+1))
         echo_test()
     quit()
 
