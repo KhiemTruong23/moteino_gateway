@@ -1,4 +1,5 @@
 import moteinogw
+import struct
 from timeit import default_timer as timer
 
 # ==========================================================================================================
@@ -54,12 +55,14 @@ if __name__ == '__main__':
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
 
+    '''
     # Serial-interface throughput test
     print("Starting serial throughput test")
     for n in range(0, 1000):
         print("Echo Test #"+str(n+1))
         echo_test()
     quit()
+    '''
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
     gw.init_radio(915, 1, 100)
@@ -69,13 +72,22 @@ if __name__ == '__main__':
 
     print("Initialized!")
 
+    radio_format = '<BBBHH'
+    radio_size   = struct.calcsize(radio_format)
+
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
     counter = 0
     response_id = 0
     while True:
         packet = gw.wait_for_message()
         if isinstance(packet, moteinogw.RadioPacket):
-            print("[rssi", packet.rssi,"] From :", packet.src_node, "To :", packet.dst_node, "Data :", packet.data)
+            print("[rssi", packet.rssi,"] From node", packet.src_node, "to node", packet.dst_node)
+            version, temp, setpoint, battery, pwm = struct.unpack('<BBBHH', packet.data[:radio_size])
+            print("    Version   = ", version)
+            print("    Temp (F)  = ", temp)
+            print("    Setpoint  = ", setpoint)
+            print("    Battery   = ", battery)
+            print("    Servo PWM = ", pwm)
 
             counter = counter + 1
             if counter % 1 == 0:

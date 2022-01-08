@@ -1,3 +1,10 @@
+# ========================================================================================================
+# Change history
+#
+# Vers    When     Who  What
+# --------------------------------------------------------------------------------------------------------
+# 1000  07-Jan-21  DWW  Initial creation
+# ========================================================================================================
 import serial
 import threading
 import socket
@@ -14,6 +21,7 @@ class RadioPacket:
     dst_node = None
     rssi     = None
     data     = None
+
 
     # 4-byte header, 2-byte src_mode, 2-byte dst_node, 2-byte rssi, data
     def __init__(self, raw_packet):
