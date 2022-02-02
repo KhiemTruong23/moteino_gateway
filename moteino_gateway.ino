@@ -109,6 +109,9 @@ void handle_init_radio(const unsigned char* raw)
 
     // The radio is now initialized
     is_radio_initialized = true;
+
+    // must include this only for RFM69HW/HCW!
+    Radio.setHighPower();
 }
 //=========================================================================================================
 

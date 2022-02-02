@@ -50,7 +50,7 @@ def echo_test():
 
 if __name__ == '__main__':
     gw = moteinogw.MoteinoGateway()
-    gw.startup('COM11')
+    gw.startup('COM7')
 
     # Wait for the packet that tells us the gateway is alive
     packet = gw.wait_for_message()
@@ -72,7 +72,7 @@ if __name__ == '__main__':
 
     print("Initialized!")
 
-    radio_format = '<BBBHH'
+    radio_format = '<BHBHH'
     radio_size   = struct.calcsize(radio_format)
 
     # Sit in a loop, displaying incoming radio packets and occasionally replying to one
@@ -82,9 +82,10 @@ if __name__ == '__main__':
         packet = gw.wait_for_message()
         if isinstance(packet, moteinogw.RadioPacket):
             print("[rssi", packet.rssi,"] From node", packet.src_node, "to node", packet.dst_node)
-            version, temp, setpoint, battery, pwm = struct.unpack('<BBBHH', packet.data[:radio_size])
+            version, temp, setpoint, battery, pwm = struct.unpack(radio_format, packet.data[:radio_size])
+            print("    Node ID   = ", packet.src_node)
             print("    Version   = ", version)
-            print("    Temp (F)  = ", temp)
+            print("    Temp (F)  = ", temp/100)
             print("    Setpoint  = ", setpoint)
             print("    Battery   = ", battery)
             print("    Servo PWM = ", pwm)
