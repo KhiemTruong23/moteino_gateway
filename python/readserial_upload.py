@@ -14,7 +14,7 @@ from influxdb import InfluxDBClient
 # ==========================================================================================================
 # Pack data into JSON packet
 # ==========================================================================================================
-def pack_JSON():
+def pack_JSON(node_tags, measurements):
 
     json_body = []
     json_dict = {}
@@ -35,7 +35,7 @@ def pack_JSON():
 # ==========================================================================================================
 # Upload data to database
 # ==========================================================================================================
-def upload():
+def upload(json_body):
     
     # Influxdb credentials
     server = 'data.elemental-platform.com'
@@ -47,11 +47,90 @@ def upload():
     # start influx session and upload
     try:
         client = InfluxDBClient(server, influx_port, user, passwd, db)
-        result = client.write_points(pack_JSON())
+        result = client.write_points(json_body)
         client.close()
         print("Result: {0}".format(result))
     except:
         print('Error connecting/uploading to InfluxDB')
+
+
+# ==========================================================================================================
+# Unpacks a configuration packet from the node
+# ==========================================================================================================
+def unpack_config_packet():
+    # second byte is device type
+    device_type = packet.data[1]
+    
+    # create a unique ID variable to save the unique ID in
+    uid = ""
+
+    # bytes 3-10 are UID (16-char)
+    for b in packet.data[2:]:
+        # format each byte into HEX
+        uid += '{:X}'.format(b)
+
+    # clear contents from dictionaries if previously populated
+    node_tags = {}
+    measurements = {}
+    node_tags.clear()
+    measurements.clear()
+
+    # create a new dictionary of node tags
+    node_tags = {
+        "device_type"   : device_type,
+        "uid"           : uid
+    }
+
+    # create a new dictionary of measurements from the node
+    measurements = {
+        'RSSI'          : packet.rssi
+    }
+
+    # return back a neatly packed JSON packet to upload
+    return (pack_JSON(node_tags, measurements))
+# ==========================================================================================================
+
+
+
+# ==========================================================================================================
+# Unpacks a data packet from a BORC
+# ==========================================================================================================
+def unpack_borc_data_packet():
+
+    # BORC data packet format
+    radio_format = '<BBBBHHHH'
+    radio_size   = struct.calcsize(radio_format)
+
+    # unpack the message into individual components
+    _, version, setpoint, manual_index, hum, temp_f, battery, pwm = struct.unpack(radio_format, packet.data[:radio_size])
+
+    # clear contents from dictionaries if previously populated
+    node_tags = {}
+    measurements = {}
+    node_tags.clear()
+    measurements.clear()
+
+    # create a new dictionary of node tags
+    node_tags = {
+        "node_id"       : packet.src_node,
+        "fw_version"    : version,
+    }
+
+    # create a new dictionary of measurements from the node
+    measurements = {
+        'temperature'   : temp_f/100,
+        'humidity'      : hum/100,
+        'setpoint'      : setpoint,
+        'manual_index'  : manual_index,
+        'battery'       : battery,
+        'servo_PWM'     : pwm,
+        'RSSI'          : packet.rssi
+    }
+
+    # for testing; delete after uncommenting upload
+    return (pack_JSON(node_tags, measurements))
+# ==========================================================================================================
+
 
 # ==========================================================================================================
 # MAIN
@@ -78,12 +157,7 @@ if __name__ == '__main__':
 
     print("Initialized!")
 
-    radio_format = '<BBBBHHH'
-    radio_size   = struct.calcsize(radio_format)
-
-    # Sit in a loop, displaying incoming radio packets and occasionally replying to one
-    counter = 0
-    response_id = 0
+    # Sit in a loop, displaying incoming radio packets
     while True:
 
         # wait for the next message
@@ -91,26 +165,15 @@ if __name__ == '__main__':
      
         # check if the packet received is of RadioPacket type
         if isinstance(packet, moteinogw.RadioPacket):
+            
+            # figure out the packet type based on first byte
+            if (packet.data[0] == 0):
+                json_body = unpack_config_packet()
 
-            # if so, unpack the message into individual components
-            version, setpoint, manual_index, hum, temp_f, battery, pwm = struct.unpack(radio_format, packet.data[:radio_size])
-
-            # create a dictionary of node tags
-            node_tags = {
-                "node_id"       : packet.src_node,
-                "fw_version"    : version,
-            }
-
-            # create a dictionary of measurements from the node
-            measurements = {
-                'temperature'   : temp_f/100,
-                'humidity'      : hum,
-                'setpoint'      : setpoint,
-                'manual_index'  : manual_index,
-                'battery'       : battery,
-                'servo_PWM'     : pwm,
-                'RSSI'          : packet.rssi
-            }
+            elif (packet.data[0] == 1):
+                json_body = unpack_borc_data_packet()
 
             # pack the data into JSON and upload database
-            upload()
+            upload(json_body)
+
+# ==========================================================================================================
