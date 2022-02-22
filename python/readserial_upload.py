@@ -2,6 +2,7 @@
 # Import necessary modules
 # ==========================================================================================================
 
+from asyncio import tasks
 import moteinogw
 import struct
 from timeit import default_timer as timer
@@ -58,14 +59,22 @@ def upload(json_body):
 # Unpacks a configuration packet from the node
 # ==========================================================================================================
 def unpack_config_packet():
-    # second byte is device type
-    device_type = packet.data[1]
+
+    # BORC data packet format
+    radio_format = '<BBBH'
+    radio_size   = struct.calcsize(radio_format)
+
+    # unpack the message into individual components
+    _, version, device_type, firmware_version = struct.unpack(radio_format, packet.data[:5])
+
+    # # second byte is device type
+    # device_type = packet.data[1]
     
     # create a unique ID variable to save the unique ID in
     uid = ""
 
-    # bytes 3-10 are UID (16-char)
-    for b in packet.data[2:]:
+    # bytes 4-11 are UID (16-char)
+    for b in packet.data[5:]:
         # format each byte into HEX
         uid += '{:X}'.format(b)
 
@@ -77,8 +86,10 @@ def unpack_config_packet():
 
     # create a new dictionary of node tags
     node_tags = {
-        "device_type"   : device_type,
-        "uid"           : uid
+        "device_type"       : device_type,
+        "uid"               : uid,
+        "config_version"    : version,
+        "fw_version"        : firmware_version
     }
 
     # create a new dictionary of measurements from the node
@@ -93,16 +104,19 @@ def unpack_config_packet():
 
 
 # ==========================================================================================================
-# Unpacks a data packet from a BORC
+# Unpacks a telemetry packet from a BORC
 # ==========================================================================================================
-def unpack_borc_data_packet():
+def unpack_borc_telemetry_packet():
 
-    # BORC data packet format
-    radio_format = '<BBBBHHHH'
+    # BORC telemetry packet format
+    radio_format = '<BBBBBBHHHH'
     radio_size   = struct.calcsize(radio_format)
 
     # unpack the message into individual components
-    _, version, setpoint, manual_index, hum, temp_f, battery, pwm = struct.unpack(radio_format, packet.data[:radio_size])
+    _, version, setpoint, manual_index, error_byte, transaction_id, hum, temp_f, battery, pwm = struct.unpack(radio_format, packet.data[:radio_size])
+
+    # send a response back to BORC
+    send_response(packet.src_node)
 
     # clear contents from dictionaries if previously populated
     node_tags = {}
@@ -112,23 +126,48 @@ def unpack_borc_data_packet():
 
     # create a new dictionary of node tags
     node_tags = {
-        "node_id"       : packet.src_node,
-        "fw_version"    : version,
+        "node_id"           : packet.src_node,
+        "telemetry_version" : version,
+        "transaction_id"    : transaction_id,
+        "error_byte"        : error_byte
     }
 
     # create a new dictionary of measurements from the node
     measurements = {
-        'temperature'   : temp_f/100,
-        'humidity'      : hum/100,
-        'setpoint'      : setpoint,
-        'manual_index'  : manual_index,
-        'battery'       : battery,
-        'servo_PWM'     : pwm,
-        'RSSI'          : packet.rssi
+        'temperature'    : temp_f/100,
+        'humidity'       : hum/100,
+        'setpoint'       : setpoint,
+        'manual_index'   : manual_index,
+        'battery'        : battery,
+        'servo_PWM'      : pwm,
+        'RSSI'           : packet.rssi
     }
 
-    # for testing; delete after uncommenting upload
+    # return JSON packet
     return (pack_JSON(node_tags, measurements))
+# ==========================================================================================================
+
+
+# ==========================================================================================================
+# Send a response back to Node
+# ==========================================================================================================
+def send_response(destination):
+
+    radio_format = '<BBBBBH16s'
+
+    packet_type = 2
+    tasks_bit_field = 2
+    setpoint = 72
+    manual_index = 1
+    network_id = 100
+    node_id = 2
+    encryption_key = bytes('1234123412341234', 'utf-8')
+
+    packet_components = struct.pack(radio_format, packet_type, tasks_bit_field, setpoint, manual_index, network_id, node_id, encryption_key)
+
+    # send response to gateway for transmission
+    gw.send_radio_packet(destination, packet_components)
+
 # ==========================================================================================================
 
 
@@ -166,14 +205,27 @@ if __name__ == '__main__':
         # check if the packet received is of RadioPacket type
         if isinstance(packet, moteinogw.RadioPacket):
             
-            # figure out the packet type based on first byte
+            # If it is a config packet
             if (packet.data[0] == 0):
+                print ("Config packet received")
+                
+                # send a response back
+                send_response(packet.src_node)
+                
+                # unpack packet
                 json_body = unpack_config_packet()
 
+            # If it is a telemetry packet
             elif (packet.data[0] == 1):
-                json_body = unpack_borc_data_packet()
+                print ("Telemetry packet received")
 
-            # pack the data into JSON and upload database
+                # send a response back to BORC
+                send_response(packet.src_node)
+
+                # unpack packet
+                json_body = unpack_borc_telemetry_packet()
+
+            # pack the data into JSON and upload to database
             upload(json_body)
 
 # ==========================================================================================================
