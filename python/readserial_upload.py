@@ -189,7 +189,7 @@ if __name__ == '__main__':
     packet = gw.wait_for_message()
 
     # Initialize the radio: 915 Mhz, Node ID 1, Network ID 100
-    gw.init_radio(915, 1, 100)
+    gw.init_radio(915, 1, 10)
 
     # Set the encryption key
     gw.set_encryption_key(b'1234123412341234')
