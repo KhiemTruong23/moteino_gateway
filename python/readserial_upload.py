@@ -153,13 +153,25 @@ def unpack_borc_telemetry_packet():
 # ==========================================================================================================
 def send_response(destination):
 
+    # define the struct format we want to pack as a response
     radio_format = '<BBBBBH16s'
 
+    # packet types:
+    # CONFIG_PACKET       = 0,
+    # TELEMETRY_PACKET    = 1,
+    # RESPONSE_PACKET     = 2
+
+    # tasks_bit_field:
+    # Change setpoint        (1 << 0)
+    # Update manual index    (1 << 1)
+    # Reboot node            (1 << 2)
+    # Update Node params     (1 << 3)
+    
     packet_type = 2
-    tasks_bit_field = 2
+    tasks_bit_field = 0
     setpoint = 72
-    manual_index = 1
-    network_id = 100
+    manual_index = 0
+    network_id = 10
     node_id = 2
     encryption_key = bytes('1234123412341234', 'utf-8')
 
