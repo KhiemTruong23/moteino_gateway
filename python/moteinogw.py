@@ -150,6 +150,7 @@ class MoteinoGateway(threading.Thread):
 
         # Create a socket to start listening on
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(('localhost', self.local_port))
         sock.listen(1)
 
@@ -161,6 +162,9 @@ class MoteinoGateway(threading.Thread):
 
         # Accept a connection from the other thread
         self.pipe_in, _ = sock.accept()
+
+        # Close the temporary socket
+        sock.close()
     # ------------------------------------------------------------------------------
 
     # ------------------------------------------------------------------------------
@@ -381,7 +385,13 @@ class MoteinoGateway(threading.Thread):
             self.pipe_out.send(b'\x01')
     # ---------------------------------------------------------------------------
 
+    # ---------------------------------------------------------------------------
+    # close() - A function to close sockets after script interrupted or killed
+    # ---------------------------------------------------------------------------
+    def close(self):
+        self.pipe_in.close()
+        self.pipe_out.close()        
+    # ---------------------------------------------------------------------------
 
 # ==========================================================================================================
-
 

@@ -208,36 +208,44 @@ if __name__ == '__main__':
 
     print("Initialized!")
 
-    # Sit in a loop, displaying incoming radio packets
-    while True:
+    try:
 
-        # wait for the next message
-        packet = gw.wait_for_message()
-     
-        # check if the packet received is of RadioPacket type
-        if isinstance(packet, moteinogw.RadioPacket):
-            
-            # If it is a config packet
-            if (packet.data[0] == 0):
-                print ("Config packet received")
+        # Sit in a loop, displaying incoming radio packets
+        while True:
+
+            # wait for the next message
+            packet = gw.wait_for_message()
+        
+            # check if the packet received is of RadioPacket type
+            if isinstance(packet, moteinogw.RadioPacket):
                 
-                # send a response back
-                send_response(packet.src_node)
-                
-                # unpack packet
-                json_body = unpack_config_packet()
+                # If it is a config packet
+                if (packet.data[0] == 0):
+                    print ("Config packet received")
+                    
+                    # send a response back
+                    send_response(packet.src_node)
+                    
+                    # unpack packet
+                    json_body = unpack_config_packet()
 
-            # If it is a telemetry packet
-            elif (packet.data[0] == 1):
-                print ("Telemetry packet received")
+                # If it is a telemetry packet
+                elif (packet.data[0] == 1):
+                    print ("Telemetry packet received")
 
-                # send a response back to BORC
-                send_response(packet.src_node)
+                    # send a response back to BORC
+                    send_response(packet.src_node)
 
-                # unpack packet
-                json_body = unpack_borc_telemetry_packet()
+                    # unpack packet
+                    json_body = unpack_borc_telemetry_packet()
 
-            # pack the data into JSON and upload to database
-            upload(json_body)
+                # pack the data into JSON and upload to database
+                upload(json_body)
+    
+    except KeyboardInterrupt:
+
+        # close out the sockets in use
+        print ("\nShutting down...\n")
+        gw.close()
 
 # ==========================================================================================================
