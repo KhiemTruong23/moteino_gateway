@@ -303,10 +303,19 @@ def thermal_api_post(node_id):
     # start influx session and upload
     try:
         client = InfluxDBClient(db_config['server'], db_config['influx_port'], db_config['user'], db_config['passwd'], db_config['db'])
-        result = client.query("select * from node_data limit 1")
+        result = client.query(f"SELECT temperature FROM node_data WHERE node_id='{node_id}' LIMIT 1")
         #Result: ResultSet({'('node_data', None)': [{'time': '2022-02-07T21:40:13.561208Z', 'RSSI': -29, 'after_temp': None, 'battery': 4187, 'before_temp': None, 'config_version': None, 'device_type': None, 'error_byte': None, 'fw_version': '1', 'humidity': 22.85, 'is_working': None, 'manual_index': 3, 'node_id': '2', 'servo_PWM': 3562, 'setpoint': 73, 'telemetry_version': None, 'temp_after': None, 'temp_before': None, 'temperature': 80.75, 'transaction_id': None, 'uid': None}]})
         client.close()
-        print("Result: {0}".format(result))
+        temperature = None
+        for row in result.get_points():
+            temperature = row['temperature']
+
+        client.close()
+
+        if temperature is not None:
+            return jsonify({'node_id': node_id, 'temperature': temperature}), 200
+        else:
+            return jsonify({'error': 'Temperature data not found for the given node_id'}), 404
     except:
         print('Error connecting/uploading to InfluxDB')
 
