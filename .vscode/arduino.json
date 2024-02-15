@@ -1,0 +1,5 @@
+{
+    "configuration": "crystal=internal,usbstack=tinyusb,debug=off",
+    "board": "Moteino:samd:currentranger_m0",
+    "sketch": "moteino_gateway.ino"
+}

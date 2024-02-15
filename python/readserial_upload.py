@@ -9,6 +9,8 @@ from timeit import default_timer as timer
 import sys
 import json
 import time
+import configparser
+from flask import Flask, request, jsonify
 from datetime import datetime
 from influxdb import InfluxDBClient
 
@@ -26,6 +28,22 @@ TYPE_STM_DEVICE = 2
 TYPE_CONFIG_PACKET       = 0
 TYPE_TELEMETRY_PACKET    = 1
 TYPE_RESPONSE_PACKET     = 2
+def read_db_config(filename='database.ini', section='influxdb'):
+    # Create a parser
+    parser = configparser.ConfigParser()
+    # Read the config file
+    parser.read(filename)
+
+    # Get section, default to influxdb
+    db_config = {}
+    if parser.has_section(section):
+        params = parser.items(section)
+        for param in params:
+            db_config[param[0]] = param[1]
+    else:
+        raise Exception(f'Section {section} not found in the {filename} file')
+
+    return db_config
 
 # ==========================================================================================================
 # Pack data into JSON packet
@@ -54,19 +72,10 @@ def pack_JSON(node_tags, measurements):
 def upload(json_body):
     
     # Influxdb credentials
-    server = 'data.elemental-platform.com'
-    influx_port = 8086
-    user = 'berg'
-    passwd = 'Validation132'
-    db = 'berg'
-
+    db_config = read_db_config()
     # start influx session and upload
     try:
-        client = InfluxDBClient(server, influx_port, user, passwd, db)
-    except Exception as e:
-        print(f'Error connecting to InfluxDB: {e}')
-        return
-    try:
+        client = InfluxDBClient(db_config['server'], db_config['influx_port'], db_config['user'], db_config['passwd'], db_config['db'])
         result = client.write_points(json_body)
         print("Result: {0}".format(result))
     except Exception as e:
@@ -101,8 +110,6 @@ def unpack_config_packet(device_type_mappings: dict):
     # clear contents from dictionaries if previously populated
     node_tags = {}
     measurements = {}
-    node_tags.clear()
-    measurements.clear()
 
     # create a new dictionary of node tags
     node_tags = {
@@ -284,6 +291,28 @@ def send_response(destination):
 
 # ==========================================================================================================
 
+# ==========================================================================================================
+# Send packet API
+# ==========================================================================================================
+app = Flask(__name__)
+@app.route('/thermal/<node_id>', methods=['GET'])
+def thermal_api_post(node_id):
+    # Influxdb credentials
+    db_config = read_db_config()
+
+    # start influx session and upload
+    try:
+        client = InfluxDBClient(db_config['server'], db_config['influx_port'], db_config['user'], db_config['passwd'], db_config['db'])
+        result = client.query("select * from node_data limit 1")
+        #Result: ResultSet({'('node_data', None)': [{'time': '2022-02-07T21:40:13.561208Z', 'RSSI': -29, 'after_temp': None, 'battery': 4187, 'before_temp': None, 'config_version': None, 'device_type': None, 'error_byte': None, 'fw_version': '1', 'humidity': 22.85, 'is_working': None, 'manual_index': 3, 'node_id': '2', 'servo_PWM': 3562, 'setpoint': 73, 'telemetry_version': None, 'temp_after': None, 'temp_before': None, 'temperature': 80.75, 'transaction_id': None, 'uid': None}]})
+        client.close()
+        print("Result: {0}".format(result))
+    except:
+        print('Error connecting/uploading to InfluxDB')
+
+
+
+# ==========================================================================================================
 
 # ==========================================================================================================
 # MAIN
