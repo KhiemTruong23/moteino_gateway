@@ -10,6 +10,8 @@ import sys
 import json
 import time
 import configparser
+import multiprocessing
+import threading
 from flask import Flask, request, jsonify
 from datetime import datetime
 from influxdb import InfluxDBClient
@@ -303,10 +305,10 @@ def thermal_api_post(node_id):
     # start influx session and upload
     try:
         client = InfluxDBClient(db_config['server'], db_config['influx_port'], db_config['user'], db_config['passwd'], db_config['db'])
-        result = client.query(f"SELECT temperature FROM node_data WHERE node_id='{node_id}' LIMIT 1")
-        #Result: ResultSet({'('node_data', None)': [{'time': '2022-02-07T21:40:13.561208Z', 'RSSI': -29, 'after_temp': None, 'battery': 4187, 'before_temp': None, 'config_version': None, 'device_type': None, 'error_byte': None, 'fw_version': '1', 'humidity': 22.85, 'is_working': None, 'manual_index': 3, 'node_id': '2', 'servo_PWM': 3562, 'setpoint': 73, 'telemetry_version': None, 'temp_after': None, 'temp_before': None, 'temperature': 80.75, 'transaction_id': None, 'uid': None}]})
+        result = client.query(f"SELECT * FROM node_data LIMIT 1")
         client.close()
         temperature = None
+        print(result.get_points())
         for row in result.get_points():
             temperature = row['temperature']
 
@@ -318,7 +320,6 @@ def thermal_api_post(node_id):
             return jsonify({'error': 'Temperature data not found for the given node_id'}), 404
     except:
         print('Error connecting/uploading to InfluxDB')
-
 
 
 # ==========================================================================================================
@@ -356,7 +357,6 @@ if __name__ == '__main__':
     device_type_mappings = {}
 
     try:
-
         # Sit in a loop, displaying incoming radio packets
         while True:
 
