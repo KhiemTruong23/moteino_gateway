@@ -89,7 +89,7 @@ def upload(json_body):
 # ==========================================================================================================
 # Unpacks a configuration packet from the node
 # ==========================================================================================================
-def unpack_config_packet(device_type_mappings: dict):
+def unpack_config_packet(device_type_mappings: dict, packet):
 
     # BORC data packet format
     radio_format = '<BBBH'
@@ -133,7 +133,7 @@ def unpack_config_packet(device_type_mappings: dict):
 # ==========================================================================================================
 # Determine type of telemetry packet for device that has not yet transmit config
 # ==========================================================================================================
-def force_detect_device_type():
+def force_detect_device_type(packet):
     
     # update user of what is happening
     print("Force reading device type...")
@@ -158,22 +158,22 @@ def force_detect_device_type():
 # ==========================================================================================================
 # Determine device type and unpack accordingly
 # ==========================================================================================================
-def process_telemetry_packet(device_type_mappings):
+def process_telemetry_packet(device_type_mappings, packet):
 
     # determine device type
     try:
         device_type = device_type_mappings[packet.src_node]
     except KeyError:
         print(f"No config seen yet from node {packet.src_node}, please restart node to determine device type.")
-        device_type = force_detect_device_type()
+        device_type = force_detect_device_type(packet)
 
     # handle BORC packet
     if device_type == TYPE_BORC_DEVICE:
-        return unpack_borc_telemetry_packet()
+        return unpack_borc_telemetry_packet(packet)
 
     # handle STM packet
     elif device_type == TYPE_STM_DEVICE:
-        return unpack_stm_telemetry_packet()
+        return unpack_stm_telemetry_packet(packet)
     
     else:
         print(f"Unrecognized packet type from node {packet.src_node}.")
@@ -182,7 +182,7 @@ def process_telemetry_packet(device_type_mappings):
 # ==========================================================================================================
 # Unpacks a telemetry packet from a BORC
 # ==========================================================================================================
-def unpack_borc_telemetry_packet():
+def unpack_borc_telemetry_packet(packet):
 
     # BORC telemetry packet format
     radio_format = '<BBBBBBHHHH'
@@ -226,7 +226,7 @@ def unpack_borc_telemetry_packet():
 # ==========================================================================================================
 # Unpacks a telemetry packet from a STM
 # ==========================================================================================================
-def unpack_stm_telemetry_packet():
+def unpack_stm_telemetry_packet(packet):
 
     # STM telemetry packet format
     radio_format = '<BBHHBB'
@@ -267,7 +267,7 @@ def unpack_stm_telemetry_packet():
 # ==========================================================================================================
 # Send a response back to Node
 # ==========================================================================================================
-def send_response(destination):
+def send_response(destination, gw):
 
     # define the struct format we want to pack as a response
     radio_format = '<BBBBBH16s'
@@ -384,7 +384,7 @@ if __name__ == '__main__':
                     send_response(packet.src_node)
 
                     # process and unpack packet
-                    json_body = process_telemetry_packet(device_type_mappings)
+                    json_body = process_telemetry_packet(device_type_mappings, packet)
                     if not json_body:
                         print("Failed to unpack telemetry.")
                         continue
